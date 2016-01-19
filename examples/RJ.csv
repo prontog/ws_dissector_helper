@@ -1,0 +1,5 @@
+Field,Length,Type
+msgType,2,
+clientId,16,
+rejectionCode,3,NUMERIC
+text,48,

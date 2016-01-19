@@ -1,0 +1,7 @@
+Field,Length,Type
+msgType,2,
+tradeId,6,
+orderid,6,
+volume,7,NUMERIC
+symbol,12,
+price,8,NUMERIC

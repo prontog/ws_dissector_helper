@@ -1,0 +1,9 @@
+Field,Length,Type
+msgType,2,
+side,1,
+type,3,
+volume,7,NUMERIC
+symbol,12,
+price,8,NUMERIC
+clientId,16,
+accountId,16,
