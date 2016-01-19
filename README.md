@@ -126,15 +126,10 @@ local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
 Now let's create a few helper functions that will simplify the main parse function.
 
 ```lua
--- Returns the value of specific field.
-local function getHeaderValue(msgBuffer, headerField)
-	return headerField:valueSingle(msgBuffer, header:getOffset(headerField.abbr))
-end
-
 -- Returns the length of whole the message. Includes header and trailer.
 local function getMsgLen(msgBuffer)
 	return SopFields.SOH:len() + SopFields.LEN:len() + 
-		   tonumber(getHeaderValue(msgBuffer, SopFields.LEN)) + 
+		   tonumber(protoHelper:getHeaderValue(msgBuffer, SopFields.LEN)) + 
 		   trailer:len()
 end
 
@@ -231,3 +226,11 @@ Testing
 -------
 
 At this point testing is manual. For an example have a look [here](examples/README.md#testing).
+
+Acknowledgments
+-------
+
+Special thanks to the following people:
+
+- FlavioJS and the Athena Dev Teams, for the [Athena dissector](http://paperlined.org/apps/wireshark/ArchivedLuaExamples/athena.lua) which was the starting point of this project.
+- Geoff Leyland, for his [lua-csv](https://github.com/geoffleyland/lua-csv).

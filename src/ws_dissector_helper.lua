@@ -1,8 +1,8 @@
 local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 
 ----------------------------------------
--- Based on the version from http://svn.eathena.ws/bugs/browser/devel/FlavioJS/athena.lua?rev=9341
---      (context: eAthena is a Ragnarok Online server-emulator)
+-- Based on the version from http://paperlined.org/apps/wireshark/ArchivedLuaExamples/athena.lua
+-- which was the starting point of this project.
 ----------------------------------------
 
 local Field = {}
@@ -483,7 +483,27 @@ local function createProtoHelper(proto)
 				self:trace('Adding ' .. i .. ' to proto.fields')
 				table.insert(self.protocol.fields, protoField)				
 			end
+			
+			self.header = header
+			self.trailer = trailer
+			
 			return msgSpecs, msgParsers
+		end,
+		-- Returns the value of specific field of the header.
+		getHeaderValue = function (self, msgBuffer, headerField)
+			assert(msgBuffer, 'msgBuffer cannot be nil')
+			assert(headerField, 'headerField cannot be nil')
+			assert(self.header, 'self.header is nil')
+			
+			return headerField:valueSingle(msgBuffer, self.header:getOffset(headerField.abbr))
+		end,
+		-- Returns the value of specific field of the trailer.
+		getTrailerValue = function (self, msgBuffer, trailerField)
+			assert(msgBuffer, 'msgBuffer cannot be nil')
+			assert(trailerField, 'trailerField cannot be nil')
+			assert(self.trailer, 'self.trailer is nil')
+			
+			return trailerField:valueSingle(msgBuffer, self.trailer:getOffset(trailerField.abbr))
 		end
 	}
 end

@@ -13,9 +13,9 @@ sop = Proto('SOP', 'Simple Order Protocol')
 -- a table of our default settings - these can be changed by changing
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
-    enable = true,
+    enable = false,
 	ports = '7001-7010',
-	trace = true
+	trace = false
 }
 local protoHelper = wsdh.createProtoHelper(sop)
 protoHelper:setDefaultPreference(defaultSettings)
@@ -53,15 +53,10 @@ local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
 													 header,
 													 trailer)
 
--- Returns the value of specific field.
-local function getHeaderValue(msgBuffer, headerField)
-	return headerField:valueSingle(msgBuffer, header:getOffset(headerField.abbr))
-end
-
 -- Returns the length of whole the message. Includes header and trailer.
 local function getMsgLen(msgBuffer)
 	return SopFields.SOH:len() + SopFields.LEN:len() + 
-		   tonumber(getHeaderValue(msgBuffer, SopFields.LEN)) + 
+		   tonumber(protoHelper:getHeaderValue(msgBuffer, SopFields.LEN)) + 
 		   trailer:len()
 end
 
