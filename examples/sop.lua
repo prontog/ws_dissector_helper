@@ -14,7 +14,7 @@ sop = Proto('SOP', 'Simple Order Protocol')
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
     enable = false,
-	ports = '7001-7010',
+	ports = '9001-9010',
 	trace = false
 }
 local protoHelper = wsdh.createProtoHelper(sop)
