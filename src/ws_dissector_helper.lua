@@ -9,16 +9,48 @@ local Field = {}
 
 Field.repo = {}
 
+-- Returns a ProtoField from the Field.repo. If it does not exist,
+-- it is first created and added to the repo. 
 local function createProtoField(abbr, name, desc, len, type)
 	local len = len or ''
-	local type = type or ftypes.STRING
+	local len = len or ''
+	local type = type or 'STRING'
 	
-	local protoField = Field.repo[abbr .. len]
-	if not protoField then		
-		--protoField = ProtoField.string(abbr, name, desc)
-		protoField = ProtoField.new(name, abbr, type, nil, nil, nil, descr)
-		Field.repo[abbr .. len] = protoField
+	local ftype = nil
+	if type == 'NUMERIC' then
+		ftype = ftypes.FLOAT
+	else
+		ftype = ftypes.STRING
+	end	
+	
+	local repoFieldName = abbr	
+	local f = Field.repo[repoFieldName]
+	
+	-- If a field with the same abbr exists in the repo we need to check
+	-- the type and length as well. All three should much. Otherwise we
+	-- need to create a new ProtoField.
+	if f and f.len ~= len then
+		warn('A field with name ' .. f.name .. ' and different length already exists.')
+		repoFieldName = repoFieldName .. len
+		f = Field.repo[repoFieldName]
 	end
+	
+	local protoField = nil
+	
+	if f then
+		protoField = f.protoField
+	else
+		--print(repoFieldName)
+		protoField = ProtoField.new(name, repoFieldName, ftype, nil, nil, nil, descr)
+		--print('ok')
+		Field.repo[repoFieldName] = { name = name,
+									  abbr = abbr,
+									  len = len,
+									  ftype = ftype,
+									  descr = descr,
+									  protoField = protoField }
+	end
+	
 	return protoField
 end
 
@@ -77,7 +109,7 @@ end
 
 function Field.NUMERIC(len, abbr, name, desc, offset)
 	return {
-		proto = createProtoField(abbr, name, desc, len, ftypes.FLOAT),
+		proto = createProtoField(abbr, name, desc, len, 'NUMERIC'),
 		type = 'NUMERIC',
 		len = function() 
 			return len
@@ -104,7 +136,7 @@ end
 
 function Field.VARLEN(lenField, abbr, name, desc, offset)	
 	return {
-		proto = createProtoField(abbr, name, desc),
+		proto = createProtoField(abbr, name, desc, lenField.abbr),
 		type = 'STRING',
 		lenField = lenField,
 		len = function(self, tvb) 
@@ -282,36 +314,37 @@ local msgSpecToFieldSpec = function(id, description, msgSpec, header, trailer)
 	-- Create Field.X object for each field in the spec
 	local bodyFields = {}	
 	for i, f in ipairs(msgSpec) do
-		-- Handle simple types.
-		if tonumber(f.len) then
-			local newField = nil
-			
-			if f.fieldType == 'NUMERIC' then
-				newField = Field.NUMERIC(f.len, f.abbr, f.name, '', f.offset)				
-			else
-				newField = Field.STRING(f.len, f.abbr, f.name, '', f.offset)
-			end
-			
-			bodyFields[#bodyFields + 1] = newField
-		else -- Hanlde complex types
+		-- Handle simple types.		
+		if f.fieldType == 'NUMERIC' then
+			bodyFields[#bodyFields + 1] = Field.NUMERIC(f.len, f.abbr, f.name, '', f.offset)				
+		elseif f.fieldType == 'REPEATING' then
 			local lenField = fieldByAbbr(f.len, bodyFields)
 			assert(lenField, f.len .. ' does not match an existing abbr in message ' .. id)
 			
-			if f.fieldType == 'REPEATING' then
-				local repeatingFields = {}
-				for ii = i + 1, #msgSpec do
-					local ff = msgSpec[ii]				
-					repeatingFields[#repeatingFields + 1] = Field.STRING(ff.len, ff.abbr, ff.name, '', ff.offset)
+			local repeatingFields = {}
+			for ii = i + 1, #msgSpec do
+				local ff = msgSpec[ii]
+				if ff.fieldType == 'REPEATING-END' then
+					
 				end
-				repeatingFields['title'] = f.name
-				
-				local repeatingComposite = Field.COMPOSITE(repeatingFields)
-				bodyFields[#bodyFields + 1] = Field.REPEATING(lenField, repeatingComposite)			
-				break
-			elseif f.fieldType == 'VARLEN' then
-				bodyFields[#bodyFields + 1] = Field.VARLEN(lenField, f.abbr, f.name, '', f.offset)
-				break
+				repeatingFields[#repeatingFields + 1] = Field.STRING(ff.len, ff.abbr, ff.name, '', ff.offset)
 			end
+			repeatingFields['title'] = f.name
+			
+			local repeatingComposite = Field.COMPOSITE(repeatingFields)
+			bodyFields[#bodyFields + 1] = Field.REPEATING(lenField, repeatingComposite)			
+			break
+		elseif f.fieldType == 'VARLEN' then
+			local lenField = fieldByAbbr(f.len, bodyFields)
+			assert(lenField, f.len .. ' does not match an existing abbr in message ' .. id)
+			
+			bodyFields[#bodyFields + 1] = Field.VARLEN(lenField,
+													   f.abbr,
+													   f.name,
+													   '',
+													   f.offset)
+		else -- Everything else will become Field.STRING
+			bodyFields[#bodyFields + 1] = Field.STRING(f.len, f.abbr, f.name, '', f.offset)
 		end
 	end	
 	bodyFields['title'] = 'Body'
@@ -479,9 +512,9 @@ local function createProtoHelper(proto)
 				msgParsers[v.name] = self:createParser(msgSpecs[v.name])				
 			end
 
-			for i, protoField in pairs(Field.repo) do				
+			for i, f in pairs(Field.repo) do				
 				self:trace('Adding ' .. i .. ' to proto.fields')
-				table.insert(self.protocol.fields, protoField)				
+				table.insert(self.protocol.fields, f.protoField)				
 			end
 			
 			self.header = header
