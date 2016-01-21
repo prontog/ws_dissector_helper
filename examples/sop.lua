@@ -13,9 +13,9 @@ sop = Proto('SOP', 'Simple Order Protocol')
 -- a table of our default settings - these can be changed by changing
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
-    enable = false,
+    enable = true,
 	ports = '9001-9010',
-	trace = false
+	trace = true
 }
 local protoHelper = wsdh.createProtoHelper(sop)
 protoHelper:setDefaultPreference(defaultSettings)
@@ -23,7 +23,8 @@ protoHelper:setDefaultPreference(defaultSettings)
 local msg_types = { { name = 'NO', file = 'NO.csv' }, 
 				    { name = 'OC', file = 'OC.csv' },
 					{ name = 'TR', file = 'TR.csv' },
-					{ name = 'RJ', file = 'RJ.csv' } }
+					{ name = 'RJ', file = 'RJ.csv' },
+					{ name = 'EN', file = 'EN.csv' } }
 
 -- Define fields
 local SopFields = {

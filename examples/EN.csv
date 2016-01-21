@@ -1,0 +1,5 @@
+Field,Length,Type
+msgType,2,
+textLen,4,
+text,textLen,VARLEN
+source,16,
