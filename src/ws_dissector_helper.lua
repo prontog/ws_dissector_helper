@@ -451,9 +451,6 @@ local function createProtoHelper(proto)
 		setDefaultPreference = function(self, defaultPrefs)
 			assert(defaultPrefs, 'defaultPrefs cannot be nil')
 			
-			self.protocol.prefs.enable = Pref.bool('Enable', 
-											  defaultPrefs.enable,
-											  'Enable the dissector.')
 			self.protocol.prefs.ports = Pref.range('Ports', 
 											  defaultPrefs.ports,
 											  'Port range (i.e. 7001-70010,8005,8100)',
@@ -464,9 +461,7 @@ local function createProtoHelper(proto)
 											 
 			self.protocol.prefs_changed = function()
 				self:disableDissector()
-				if self.protocol.prefs.enable then
-					self:enableDissector()		
-				end
+				self:enableDissector()
 			end
 		end,
 		-- Create a parser function for specific message spec.

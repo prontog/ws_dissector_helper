@@ -14,7 +14,6 @@ Basic features are:
 - Composite fields. Fields that are comprised of other fixed length fields. Composite fields are visualized with a subtree in the *Packet Details* pane.
 - Repeating groups. These are composite fields that are repeated. The number of repeats is taken by another field.
 - Default settings:
-	- enable. Enables/disables the dissector.
 	- ports. The ports to register.
 	- trace. Useful for debugging purposes.
 - Message header and trailer.
@@ -52,14 +51,12 @@ local protoHelper = wsdh.createProtoHelper(sop)
 
 Create a table with the values for the default settings. These are:
 
-- enable. Enables/disables the dissector.
 - ports. The ports to register.
 - trace. Useful for debugging purposes.
 
 The values can be changed from the *Protocols* sections of  Wireshark's *Preferences* dialog.
 ``` lua
 local defaultSettings = {
-    enable = true,
 	ports = '7001-7010',
 	trace = true
 }
@@ -199,11 +196,9 @@ Now that the parse function for the SOP protocol is ready, we need to create the
 sop.dissector = protoHelper:getDissector(parseMessage)
 ```
 
-Finally check the preferences and enable SOP dissector if needed.
+Finally enable the dissector. `enableDissector` registers the ports to the TCP dissector table. 
 ```lua
-if sop.prefs.enable then
-	protoHelper:enableDissector() -- TCP by default.
-end
+protoHelper:enableDissector()
 ```
 
 An example

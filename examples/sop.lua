@@ -13,7 +13,6 @@ sop = Proto('SOP', 'Simple Order Protocol')
 -- a table of our default settings - these can be changed by changing
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
-    enable = true,
 	ports = '9001-9010',
 	trace = true
 }
@@ -116,6 +115,4 @@ local function parseMessage(buffer, pinfo, tree)
 end
 
 sop.dissector = protoHelper:getDissector(parseMessage)
-if sop.prefs.enable then
-	protoHelper:enableDissector() -- TCP by default.
-end
+protoHelper:enableDissector()
