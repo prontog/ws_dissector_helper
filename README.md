@@ -115,7 +115,8 @@ The function returns two tables. One containing the message specs and another co
 -- Column mapping. As described above.
 local columns = { name = 'Field', 
 				  length = 'Length', 
-				  type = 'Type' }
+				  type = 'Type',
+				  desc = 'Description' }
 
 local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
 													 SOP_SPECS_PATH,
