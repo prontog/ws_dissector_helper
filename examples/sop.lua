@@ -23,7 +23,8 @@ local msg_types = { { name = 'NO', file = 'NO.csv' },
 				    { name = 'OC', file = 'OC.csv' },
 					{ name = 'TR', file = 'TR.csv' },
 					{ name = 'RJ', file = 'RJ.csv' },
-					{ name = 'EN', file = 'EN.csv' } }
+					{ name = 'EN', file = 'EN.csv' },
+					{ name = 'BO', file = 'BO.csv' } }
 
 -- Define fields
 local SopFields = {

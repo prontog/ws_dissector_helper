@@ -26,7 +26,8 @@ NO | New Order | NO.csv
 OC | Order Confirmation | OC.csv
 TR | Trade | TR.csv
 RJ | Rejection | RJ.csv
-EN | Exchange News | EN.csv 
+EN | Exchange News | EN.csv
+BO | Best Bid and Offer | BO.csv 
 
 The specs of the payload of each message can be found at the relevant CSV file.
 

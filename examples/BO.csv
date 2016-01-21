@@ -1,0 +1,11 @@
+Field,Length,Type
+MsgType,2,
+Symbol,12,
+Number of levels,1,NUMERIC
+Levels,Number of levels,REPEATING
+Bid Volume,7,NUMERIC
+Bid Price,8,NUMERIC
+Bid Orders,5,NUMERIC
+Offer Volume,7,NUMERIC
+Offer Price,8,NUMERIC
+Offer Orders,5,NUMERIC
