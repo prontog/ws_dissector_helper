@@ -5,6 +5,8 @@ local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 -- which was the starting point of this project.
 ----------------------------------------
 
+local wsdh = {}
+
 -- Field table will contain 
 local Field = {}
 
@@ -241,7 +243,7 @@ end
 
 	Returns a table with the following columns: { name, abbr, len, offset, type }
 --]]
-local function = readMsgSpec(fileName, nameCol, lengthCol, typeCol, abbrPrefix, offset, sep)	
+local function readMsgSpec(fileName, nameCol, lengthCol, typeCol, abbrPrefix, offset, sep)	
 	local f = csv.open(fileName, { separator = sep or ',', header = true })	
 	assert(f, 'fileName ' .. fileName .. ' does not exist')
 	assert(nameCol, 'nameCol cannot be nil')
