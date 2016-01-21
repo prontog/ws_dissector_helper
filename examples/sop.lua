@@ -44,11 +44,15 @@ local trailer = wsdh.Field.COMPOSITE{
 	SopFields.ETX
 }
 
+-- Column mapping.
+local columns = { name = 'Field', 
+				  length = 'Length', 
+				  type = 'Type',
+				  desc = 'Description'}
+
 local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
 													 SOP_SPECS_PATH,
-													 'Field',
-													 'Length',
-													 'Type',
+													 columns,
 													 header:len(),
 													 ',',
 													 header,

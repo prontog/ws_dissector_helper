@@ -98,9 +98,11 @@ Now let's load the specs using the `loadSpecs` function of the `protoHelper` obj
 
 1. msgTypes		this is a table of message types. Each type has two properties: name and file.
 1. dir			the directory were the CSV files are located
-1. nameCol		the title of the column with the field names
-1. lengthCol	the title of the column with the field lengths
-1. typeCol		the title of the column with the field types
+1. columns is a table with the mapping of columns:
+	1. name is the name of the field name column. 
+	1. length is the name of the field legth column. 
+	1. type is the name of the field type column. Optional. Defaults to STRING.
+	1. desc is the name of the field description column. Optional.
 1. offset		the starting value for the offset column. Optional. Defaults to 0.
 1. sep			the separator used in the csv file. Optional. Defaults to ','.
 1. header		a composite or fixed length field to be added before the fields found in spec.
@@ -109,11 +111,15 @@ Now let's load the specs using the `loadSpecs` function of the `protoHelper` obj
 The function returns two tables. One containing the message specs and another containing parsers for the message specs. Each message spec has an id, a description and all the fields created from the CSV in a similar fashion to the one we used previously to create `SopFields`. Each message parser is specialized for a specific message type and they include the boilerplate code needed to handle the parsing of a message.
 
 ```lua
+
+-- Column mapping. As described above.
+local columns = { name = 'Field', 
+				  length = 'Length', 
+				  type = 'Type' }
+
 local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
 													 SOP_SPECS_PATH,
-													 'Field',
-													 'Length',
-													 'Type',
+													 columns,
 													 header:len(),
 													 ',',
 													 header,
