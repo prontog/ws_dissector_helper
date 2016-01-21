@@ -44,7 +44,7 @@ local function createProtoField(abbr, name, desc, len, type)
 		protoField = f.protoField
 	else
 		--print(repoFieldName)
-		protoField = ProtoField.new(name, repoFieldName, ftype, nil, nil, nil, descr)
+		protoField = ProtoField.new(name, repoFieldName, ftype, nil, nil, nil, desc)
 		--print('ok')
 		Field.repo[repoFieldName] = { name = name,
 									  abbr = abbr,
@@ -230,24 +230,27 @@ function Field.REPEATING(repeatsField, compositeField)
 end
 
 --[[ 
-	Read a message spec from a csv file. 
+	Read a message spec from a CSV file. 
 
-	nameCol is the name of the column with the field names. 
-	lengthCol is the name of the column with the field legths. 
-	typeCol is the name of the column with the field types. Optional. Defaults 
-		to STRING types.
+	filename is the name of the CSV file.
+	columns is a table with the mapping of columns:
+		name is the name of the field name column. 
+		length is the name of the field length column. 
+		type is the name of the field type column. Optional. Defaults to STRING.
+		desc is the name of the field description column. Optional.
 	abbrPrefix is the prefix for the abbr column, which is simply the name with 
 		any	spaces and non-printable characters removed. Optional. Defaults to ''.
 	offset is the starting value for the offset column. Optional. Defaults to 0.
 	sep is the separator used in the csv file. Optional. Defaults to ','.
 
-	Returns a table with the following columns: { name, abbr, len, offset, type }
+	Returns a table with the following columns: { name, abbr, len, offset, type, desc }
 --]]
-local function readMsgSpec(fileName, nameCol, lengthCol, typeCol, abbrPrefix, offset, sep)	
-	local f = csv.open(fileName, { separator = sep or ',', header = true })	
+local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
+	local f = csv.open(fileName, { separator = sep or ',', header = true })
 	assert(f, 'fileName ' .. fileName .. ' does not exist')
-	assert(nameCol, 'nameCol cannot be nil')
-	assert(lengthCol,'lengthCol cannot be nil')
+	assert(columns, 'columns cannot be nil')
+	assert(columns.name, 'columns.name cannot be nil')
+	assert(columns.length,'columns.length cannot be nil')
 	abbrPrefix = abbrPrefix or ''
 	offset = offset or 0
 
@@ -263,10 +266,11 @@ local function readMsgSpec(fileName, nameCol, lengthCol, typeCol, abbrPrefix, of
 
 	local i = 1
 	for ln in f:lines() do
-		assert(ln[nameCol], 'nameCol ' .. nameCol .. ' does not exist' )
-		assert(ln[lengthCol], 'lengthCol ' .. lengthCol .. ' does not exist' )
+		local length = ln[columns.length]
+		local name = ln[columns.name]
 		
-		local length = ln[lengthCol]
+		assert(name, 'name ' .. columns.name .. ' does not exist' )
+		assert(length, 'length ' .. columns.name .. ' does not exist' )		
 		-- Rows with non-numeric values in the 'len' column are skipped in the offset
 		-- calculation. These fields can signify a repeating field with the len equal
 		-- to the abbr of an already existing field signifying the number of repeats.		
@@ -274,16 +278,19 @@ local function readMsgSpec(fileName, nameCol, lengthCol, typeCol, abbrPrefix, of
 			length = createAbbr(length)
 		end
 		
-		local fieldType = ln[typeCol]
+		local fieldType = ln[columns.type]
 		if not Field[fieldType] then
 			fieldType = 'STRING'
 		end
 		
-		spec[i] = { name = ln[nameCol], 
-					abbr = createAbbr(ln[nameCol]), 
+		local desc = ln[columns.desc]
+		
+		spec[i] = { name = name, 
+					abbr = createAbbr(name), 
 					len = length, 
 					offset = offset,
-					fieldType = fieldType }
+					fieldType = fieldType,
+					desc = desc	}
 		
 		-- Again length can be string. See previous comment.
 		if tonumber(length) then		
@@ -351,7 +358,7 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 			bodyFields[#bodyFields + 1] = Field.VARLEN(lenField,
 													   f.abbr,
 													   f.name,
-													   '',
+													   f.desc,
 													   f.offset)
 		else -- Everything else is a simple type
 			bodyFields[#bodyFields + 1] = createSimpleField(f)
@@ -391,9 +398,10 @@ local function createProtoHelper(proto)
 			end		
 		end,
 		printMsgSpec = function(self, spec)		
-			self:trace('index', 'name', 'abbr', 'len', 'offset', 'type')
+			self:trace('index', 'name', 'abbr', 'len', 'offset', 'type', 'desc')
 			for i, field in ipairs(spec) do		
-				self:trace(i, field.name, field.abbr, field.len, field.offset, field.fieldType)		
+				self:trace(i, field.name, field.abbr, field.len,
+						   field.offset, field.fieldType, field.desc)
 			end
 		end,
 		printField = function(self, field)
@@ -498,16 +506,14 @@ local function createProtoHelper(proto)
 				return bytesConsumed, subtree
 			end
 		end,
-		loadSpecs = function(self, msgTypes, dir, nameCol, lengthCol, typeCol, offset, sep, header, trailer)
+		loadSpecs = function(self, msgTypes, dir, columns, offset, sep, header, trailer)
 			local specs = {}
 			local msgSpecs = {}
 			local msgParsers = {}
 			-- Read the CSV files into specs.
 			for i, v in ipairs(msgTypes) do	
 				specs[v.name] = readMsgSpec(dir .. v.file, 
-									   nameCol,
-									   lengthCol,
-									   typeCol,									   
+									   columns,									   
 									   string.lower(self.protocol.name).. '.',
 									   offset,
 									   sep)
