@@ -50,6 +50,8 @@ dofile("Replace with full path to this file.")
 Testing
 -------
 
+Tested on *Wireshark 2.0.1*.
+
 At this point the tests are manual. In the *txt* files you will find messages of different type that can be used with a tool like *nc*.
 
 1. Start a server with `nc -l 9001`

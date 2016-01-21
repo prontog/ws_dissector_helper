@@ -48,7 +48,7 @@ local trailer = wsdh.Field.COMPOSITE{
 local columns = { name = 'Field', 
 				  length = 'Length', 
 				  type = 'Type',
-				  desc = 'Description'}
+				  desc = 'Description' }
 
 local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
 													 SOP_SPECS_PATH,

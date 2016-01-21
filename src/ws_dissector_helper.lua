@@ -291,7 +291,7 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 					offset = offset,
 					type = fieldType,
 					desc = desc	}
-		
+
 		-- Again length can be string. See previous comment.
 		if tonumber(length) then		
 			offset = offset + length

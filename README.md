@@ -229,6 +229,14 @@ Testing
 
 At this point testing is manual. For an example have a look [here](examples/README.md#testing).
 
+Known bugs
+---------
+
+On captures with many missing packages and many retransmissions the following errors can be found in the *Expert Information* dialog.
+
+> Lua Error: ws_dissector_helper.lua:98: Range is out of bounds
+> Lua Error: ws_dissector_helper.lua:154: bad argument #3 to 'tvb' (number expected, got string)
+
 Acknowledgments
 -------
 
