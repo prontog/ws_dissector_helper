@@ -289,7 +289,7 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 					abbr = createAbbr(name), 
 					len = length, 
 					offset = offset,
-					fieldType = fieldType,
+					type = fieldType,
 					desc = desc	}
 		
 		-- Again length can be string. See previous comment.
@@ -315,7 +315,7 @@ end
 local function createSimpleField(spec)
 	local newField = nil
 	
-	if spec.fieldType == 'NUMERIC' then
+	if spec.type == 'NUMERIC' then
 		newField = Field.NUMERIC(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
 	else
 		newField = Field.STRING(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
@@ -337,7 +337,7 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 	local bodyFields = {}	
 	for i, f in ipairs(msgSpec) do
 		-- Handle complex types.
-		if f.fieldType == 'REPEATING' then
+		if f.type == 'REPEATING' then
 			local lenField = fieldByAbbr(f.len, bodyFields)
 			assert(lenField, f.len .. ' does not match an existing abbr in message ' .. id)
 			
@@ -351,7 +351,7 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 			local repeatingComposite = Field.COMPOSITE(repeatingFields)
 			bodyFields[#bodyFields + 1] = Field.REPEATING(lenField, repeatingComposite)			
 			break
-		elseif f.fieldType == 'VARLEN' then
+		elseif f.type == 'VARLEN' then
 			local lenField = fieldByAbbr(f.len, bodyFields)
 			assert(lenField, f.len .. ' does not match an existing abbr in message ' .. id)
 			
@@ -401,7 +401,7 @@ local function createProtoHelper(proto)
 			self:trace('index', 'name', 'abbr', 'len', 'offset', 'type', 'desc')
 			for i, field in ipairs(spec) do		
 				self:trace(i, field.name, field.abbr, field.len,
-						   field.offset, field.fieldType, field.desc)
+						   field.offset, field.type, field.desc)
 			end
 		end,
 		printField = function(self, field)
