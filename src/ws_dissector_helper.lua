@@ -50,7 +50,7 @@ local function createProtoField(abbr, name, desc, len, type)
 									  abbr = abbr,
 									  len = len,
 									  ftype = ftype,
-									  descr = descr,
+									  desc = desc,
 									  protoField = protoField }
 	end
 	
@@ -305,6 +305,18 @@ local function fieldByAbbr(abbr, fields)
 	return nil
 end
 
+local function createSimpleField(spec)
+	local newField = nil
+	
+	if spec.fieldType == 'NUMERIC' then
+		newField = Field.NUMERIC(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
+	else
+		newField = Field.STRING(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
+	end
+	
+	return newField
+end
+
 -- Converts a spec to Field.XXXX. id is the message type/id. description is a text field 
 -- describing the message type. spec must be of the same format as the output
 -- of readSpec. header is a Field to be added before the fields found in spec. 
@@ -317,20 +329,15 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 	-- Create Field.X object for each field in the spec
 	local bodyFields = {}	
 	for i, f in ipairs(msgSpec) do
-		-- Handle simple types.		
-		if f.fieldType == 'NUMERIC' then
-			bodyFields[#bodyFields + 1] = Field.NUMERIC(f.len, f.abbr, f.name, '', f.offset)				
-		elseif f.fieldType == 'REPEATING' then
+		-- Handle complex types.
+		if f.fieldType == 'REPEATING' then
 			local lenField = fieldByAbbr(f.len, bodyFields)
 			assert(lenField, f.len .. ' does not match an existing abbr in message ' .. id)
 			
 			local repeatingFields = {}
 			for ii = i + 1, #msgSpec do
 				local ff = msgSpec[ii]
-				if ff.fieldType == 'REPEATING-END' then
-					
-				end
-				repeatingFields[#repeatingFields + 1] = Field.STRING(ff.len, ff.abbr, ff.name, '', ff.offset)
+				repeatingFields[#repeatingFields + 1] = createSimpleField(ff)
 			end
 			repeatingFields['title'] = f.name
 			
@@ -346,8 +353,8 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 													   f.name,
 													   '',
 													   f.offset)
-		else -- Everything else will become Field.STRING
-			bodyFields[#bodyFields + 1] = Field.STRING(f.len, f.abbr, f.name, '', f.offset)
+		else -- Everything else is a simple type
+			bodyFields[#bodyFields + 1] = createSimpleField(f)
 		end
 	end	
 	bodyFields['title'] = 'Body'
