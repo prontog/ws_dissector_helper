@@ -5,6 +5,7 @@ local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 -- which was the starting point of this project.
 ----------------------------------------
 
+-- Field table will contain 
 local Field = {}
 
 Field.repo = {}
@@ -240,7 +241,7 @@ end
 
 	Returns a table with the following columns: { name, abbr, len, offset, type }
 --]]
-local readMsgSpec = function(fileName, nameCol, lengthCol, typeCol, abbrPrefix, offset, sep)	
+local function = readMsgSpec(fileName, nameCol, lengthCol, typeCol, abbrPrefix, offset, sep)	
 	local f = csv.open(fileName, { separator = sep or ',', header = true })	
 	assert(f, 'fileName ' .. fileName .. ' does not exist')
 	assert(nameCol, 'nameCol cannot be nil')
@@ -306,7 +307,7 @@ end
 -- describing the message type. spec must be of the same format as the output
 -- of readSpec. header is a Field to be added before the fields found in spec. 
 -- trailer is a Field to be added after the fields found in spec.
-local msgSpecToFieldSpec = function(id, description, msgSpec, header, trailer)	
+local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)	
 	assert(id, 'id cannot be nil');
 	description = description or ''
 	assert(msgSpec, 'msgSpec cannot be nil');	
