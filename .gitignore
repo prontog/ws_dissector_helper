@@ -39,3 +39,8 @@ luac.out
 *.x86_64
 *.hex
 
+# I use rstudio to right the md files.
+.Rhistory
+README.html
+examples/README.html
+sop.pcapng

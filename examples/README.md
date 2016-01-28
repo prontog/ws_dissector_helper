@@ -55,6 +55,8 @@ Tested on *Wireshark 2.0.1*.
 At this point the tests are manual. In the *txt* files you will find messages of different type that can be used with a tool like *nc*.
 
 1. Start a server with `nc -l 9001`
-2. Start tshark and grep its output for SOP: `tshark -Y 'SOP'`
+2. Start *tshark* with a display filter with just the protocol name: `tshark -Y 'sop'`. Note that sometimes this approach might hide some Lua errors. You can then repeat the test using `Wireshark` instead of `tshark`.
 3. Connect with a client and send one or more messages from a file: `cat conversation | nc SERVER_IP 9001`
-4. If lines start appearing in the filtered tshark output then the test was successful.
+4. If lines start appearing in the filtered *tshark* output then the test was successful.
+
+If you finish testing, you can save the captured frame to a file for future tests.
