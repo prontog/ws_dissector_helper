@@ -9,25 +9,25 @@ The HEADER is very simple:
 
 Field | Length | Type | Description
 -----|---------|------|------
-SOH | 1 | string | Start of header.
-LEN | 3 | string |Length of the payload (i.e. no header/trailer).
+SOH | 1 | STRING | Start of header.
+LEN | 3 | STRING |Length of the payload (i.e. no header/trailer).
 
 The TRAILER is even simpler:
 
 Field | Length | Type | Description
 -----|---------|------|------
-ETX | 1 | string | End of text.
+ETX | 1 | STRING | End of text.
 
 The message types are:
 
 Type | Description | Spec
 -----|-------------|-----
-NO | New Order | NO.csv
-OC | Order Confirmation | OC.csv
-TR | Trade | TR.csv
-RJ | Rejection | RJ.csv
-EN | Exchange News | EN.csv
-BO | Best Bid and Offer | BO.csv 
+NO | New Order | [NO.csv](NO.csv)
+OC | Order Confirmation | [OC.csv](OC.csv)
+TR | Trade | [TR.csv](TR.csv)
+RJ | Rejection | [RJ.csv](RJ.csv)
+EN | Exchange News | [EN.csv](EN.csv)
+BO | Best Bid and Offer | [BO.csv](BO.csv)
 
 The specs of the payload of each message can be found at the relevant CSV file.
 
