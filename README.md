@@ -3,22 +3,39 @@ ws_dissector_helper
 
 Helper for creating a Wireshark Dissector in Lua. For text protocols only.
 
-Basic features are:
+### Basic features
 
 - Messages specifications in CSV format.
-- Fixed length fields:
-	- STRING. This is the default type.
-	- FIXED. These are strings with a fixed value.
-	- NUMERIC.
-- Variable length string fields.
-- Composite fields. Fields that are comprised of other fixed length fields. Composite fields are visualized with a subtree in the *Packet Details* pane.
-- Repeating groups. These are composite fields that are repeated. The number of repeats is taken by another field.
-- Default settings:
-	- ports. The ports to register.
-	- trace. Useful for debugging purposes.
-- Message header and trailer.
+- Fixed length fields.
+- Variable Length fields.
+- Composite fields.
+- Repeating Group fields.
+- Default preferences.
+- Message header/trailer.
 - All fields can be used in Wireshark's display filters.
 - Simple and flexible. Simple, because you could make small changes to the example protocol and create your own. Flexible, because you can override pretty much all functionality or add your own.
+
+### Field types
+
+Type | ProtoField mapping | Description | Remarks
+-----|--------------------|-------------|--------
+STRING | `ftypes.STRING` | A fixed length string | This is the default type. Fields with no specified type will become STRING.
+NUMERIC | `ftypes.FLOAT` | A fixed length number | Floating point number.
+FIXED | `ftypes.STRING` | A string with fixed value | This is useful for fields that have a fixed value and should be validated.
+VARLEN | `ftypes.STRING` | A string of variable length | The length of the field is specified by another field in the message.
+COMPOSITE | | A field containing other fields | Composite fields are visualized with a subtree in the *Packet Details* pane. This type cannot be specified in a CSV file. Use the `Field.COMPOSITE` function instead to create one dynamically. Useful for header/trailer fields. **Note** that only fixed length fields are allowed inside a composite.
+REPEATING | | | These are composite fields that are repeated. The number of repeats is taken by another field.
+
+### Dissector preferences
+
+Use the `setDefaultPreference` of the helper object with the values you want. The default preferences are:
+
+Name | Type | Description | Remarks
+-----|------|-------------|--------
+ports | `Pref.range` | The TCP ports to register | For example "7001-70010,8005,8100"
+trace | `Pref.bool` | Enables tracing  | Useful for debugging your dissector. You can also use the `trace` function of the helper object in your lua script instead of using `print` or `debug`.
+
+These preferences can be changed from the *Protocols* section of Wireshark's *Preferences* dialog.
 
 Getting started
 ---------------
@@ -49,12 +66,7 @@ Create the proto helper. Note that we pass the Proto object to the `createProtoH
 local protoHelper = wsdh.createProtoHelper(sop)
 ```
 
-Create a table with the values for the default settings. These are:
-
-- ports. The ports to register.
-- trace. Useful for debugging purposes.
-
-The values can be changed from the *Protocols* sections of  Wireshark's *Preferences* dialog.
+Create a table with the values for the default settings. The values can be changed from the *Protocols* section of Wireshark's *Preferences* dialog.
 ``` lua
 local defaultSettings = {
 	ports = '7001-7010',
@@ -99,10 +111,10 @@ Now let's load the specs using the `loadSpecs` function of the `protoHelper` obj
 1. msgTypes		this is a table of message types. Each type has two properties: name and file.
 1. dir			the directory were the CSV files are located
 1. columns is a table with the mapping of columns:
-	1. name is the name of the field name column. 
-	1. length is the name of the field legth column. 
-	1. type is the name of the field type column. Optional. Defaults to STRING.
-	1. desc is the name of the field description column. Optional.
+	- name is the name of the field name column. 
+	- length is the name of the field legth column. 
+	- type is the name of the field type column. Optional. Defaults to STRING.
+	- desc is the name of the field description column. Optional.
 1. offset		the starting value for the offset column. Optional. Defaults to 0.
 1. sep			the separator used in the csv file. Optional. Defaults to ','.
 1. header		a composite or fixed length field to be added before the fields found in spec.
