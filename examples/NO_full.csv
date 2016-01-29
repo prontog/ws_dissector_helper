@@ -1,0 +1,12 @@
+Field,Length,Type
+SOH,1,
+LEN,3,NUMERIC
+msgType,2,
+side,1,
+type,3,
+volume,7,NUMERIC
+symbol,12,
+price,8,NUMERIC
+clientId,16,
+accountId,16,
+ETX,1,

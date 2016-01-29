@@ -10,7 +10,7 @@ The HEADER is very simple:
 Field | Length | Type | Description
 -----|---------|------|------
 SOH | 1 | STRING | Start of header.
-LEN | 3 | STRING |Length of the payload (i.e. no header/trailer).
+LEN | 3 | NUMERIC |Length of the payload (i.e. no header/trailer).
 
 The TRAILER is even simpler:
 
@@ -20,21 +20,24 @@ ETX | 1 | STRING | End of text.
 
 The message types are:
 
-Type | Description | Spec
------|-------------|-----
-NO | New Order | [NO.csv](NO.csv)
-OC | Order Confirmation | [OC.csv](OC.csv)
-TR | Trade | [TR.csv](TR.csv)
-RJ | Rejection | [RJ.csv](RJ.csv)
-EN | Exchange News | [EN.csv](EN.csv)
-BO | Best Bid and Offer | [BO.csv](BO.csv)
+Type | Description | Full Spec | Payload Spec
+-----|-------------|-----------|--------------
+NO | New Order | [NO_full.csv](NO_full.csv) | [NO.csv](NO.csv)
+OC | Order Confirmation | [OC_full.csv](OC_full.csv) | [OC.csv](OC.csv)
+TR | Trade | [TR_full.csv](TR_full.csv) | [TR.csv](TR_full.csv)
+RJ | Rejection | [RJ_full.csv](RJ_full.csv) | [RJ.csv](RJ.csv)
+EN | Exchange News | [EN_full.csv](EN_full.csv) | [EN.csv](EN.csv)
+BO | Best Bid and Offer | [BO_full.csv](BO_full.csv) | [BO.csv](BO.csv)
 
-The specs of the payload of each message can be found at the relevant CSV file.
+The specs of each message can be found at the relevant CSV file. As you can see there are two CSV files per message type. One contains the full spec which includes header-payload-trailer and the other contains only the payload.
 
 Dissector
 ------------
 
-The code for the dissector at file [sop.lua](sop.lua)
+You will find two dissectors for SOP:
+
+- [sop.lua](sop.lua) uses the payload CSV files and dynamically creates the header and trailer parts.
+- [sop_alt.lua](sop_alt.lua) uses the full CSV files. There are no header and trailer COMPOSITE field. All fields are visualized in the same tree in the *Packet Details* pane.
 
 Installation
 ------------

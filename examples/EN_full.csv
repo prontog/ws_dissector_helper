@@ -1,0 +1,8 @@
+Field,Length,Type
+SOH,1,
+LEN,3,NUMERIC
+msgType,2,
+textLen,4,
+text,textLen,VARLEN
+source,16,
+ETX,1,

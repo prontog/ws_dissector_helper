@@ -1,0 +1,8 @@
+Field,Length,Type,Description
+SOH,1,
+LEN,3,NUMERIC
+msgType,2,,"Message type"
+clientId,16,,"Client Id"
+rejectionCode,3,NUMERIC,"Rejection Code"
+text,48,,"Text explaining the rejection"
+ETX,1,
