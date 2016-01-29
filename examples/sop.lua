@@ -1,10 +1,10 @@
 -- Wireshard Dissector for the Simple Order Protocol (sop). An imaginary
 -- protocol.
 --
--- IMPORTANT: Add the following lines at the end of Wireshark's init.lua script:
+-- IMPORTANT: Add the following lines at the end of Wireshark's init.lua:
 --
--- WSDH_SCRIPT_PATH="Replace this with the path to the directory src of the repo."
--- SOP_SPECS_PATH="Replace this with the path to the directory of the CSV specs."
+-- WSDH_SCRIPT_PATH="path to the directory 'src' of the repo."
+-- SOP_SPECS_PATH="path to the directory of the CSV specs."
 -- dofile("Replace with full path to this file.")
 --
 local wsdh = dofile(WSDH_SCRIPT_PATH .. "ws_dissector_helper.lua")
@@ -16,8 +16,8 @@ local defaultSettings = {
 	ports = '9001-9010',
 	trace = true
 }
-local protoHelper = wsdh.createProtoHelper(sop)
-protoHelper:setDefaultPreference(defaultSettings)
+local helper = wsdh.createProtoHelper(sop)
+helper:setDefaultPreference(defaultSettings)
 
 local msg_types = { { name = 'NO', file = 'NO.csv' }, 
 				    { name = 'OC', file = 'OC.csv' },
@@ -50,24 +50,25 @@ local columns = { name = 'Field',
 				  type = 'Type',
 				  desc = 'Description' }
 
-local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
-													 SOP_SPECS_PATH,
-													 columns,
-													 header:len(),
-													 ',',
-													 header,
-													 trailer)
+local msg_specs, msg_parsers = helper:loadSpecs(msg_types,
+												SOP_SPECS_PATH,
+												columns,
+												header:len(),
+												',',
+												header,
+												trailer)
+
+-- Returns the length of the message from the end of header up to the start 
+-- of trailer.
+local function getMsgDataLen(msgBuffer)
+	return helper:getHeaderValue(msgBuffer, SopFields.LEN)
+end
 
 -- Returns the length of whole the message. Includes header and trailer.
 local function getMsgLen(msgBuffer)
-	return SopFields.SOH:len() + SopFields.LEN:len() + 
-		   tonumber(protoHelper:getHeaderValue(msgBuffer, SopFields.LEN)) + 
+	return header:len() + 
+		   getMsgDataLen(msgBuffer) + 
 		   trailer:len()
-end
-
--- Returns the length of the message from the end of header up to the start of trailer.
-local function getMsgDataLen(msgBuffer)
-	return getMsgLen(msgBuffer) - header:len() - trailer:len()
 end
 
 -- Parse a specific type of message from a buffer and add it to the tree.
@@ -79,11 +80,12 @@ local function parseMessage(buffer, pinfo, tree)
 	-- Messages start with SOH.
 
 	if SopFields.SOH:value(buffer) ~= SopFields.SOH.fixedValue then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' No SOH.')
+		helper:trace('Frame: ' .. pinfo.number .. ' No SOH.')
 		return 0
 	end	
 
-	-- Return missing message length in the case when the header is split between packets.	
+	-- Return missing message length in the case when the header is split 
+	-- between packets.	
 	if buffer:len() <= minBufferLen then
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
@@ -92,22 +94,27 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgType = buffer(header:len(), msgTypeLen):string()
 	local msgSpec = msg_specs[msgType]
 	if not msgSpec then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' Unknown message type: ' .. msgType)
+		helper:trace('Frame: ' .. pinfo.number .. 
+					 ' Unknown message type: ' .. msgType)
 		return 0
 	end
 
-	-- Return missing message length in the case when the data is split between packets.
+	-- Return missing message length in the case when the data is split 
+	-- between packets.
 	local msgLen = getMsgLen(buffer)
 	local msgDataLen = getMsgDataLen(buffer)
 	if buffer:len() < msgLen then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' buffer:len < msgLen')
+		helper:trace('Frame: ' .. pinfo.number .. 
+					 ' buffer:len < msgLen')
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
 
 	local msgParse = msg_parsers[msgType]
-	-- If no parser is found for this type of message, reject the whole packet.
+	-- If no parser is found for this type of message, reject the whole 
+	-- packet.
 	if not msgParse then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' Not supported message type: ' .. msgType)
+		helper:trace('Frame: ' .. pinfo.number .. 
+					 ' Not supported message type: ' .. msgType)
 		return 0
 	end
 	
@@ -119,5 +126,5 @@ local function parseMessage(buffer, pinfo, tree)
 	return bytesConsumed
 end
 
-sop.dissector = protoHelper:getDissector(parseMessage)
-protoHelper:enableDissector()
+sop.dissector = helper:getDissector(parseMessage)
+helper:enableDissector()
