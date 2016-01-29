@@ -1,21 +1,21 @@
 local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 
-----------------------------------------
--- Based on the version from http://paperlined.org/apps/wireshark/ArchivedLuaExamples/athena.lua
--- which was the starting point of this project.
-----------------------------------------
+-------------------------------------------------
+-- Inspired by the Athena dissector by FlavioJS.
+-------------------------------------------------
 
 local wsdh = {}
 
 -- Field table will contain 
 local Field = {}
 
-Field.repo = {}
+local fieldRepo = {}
 
--- Returns a ProtoField from the Field.repo. If it does not exist,
+-- Returns a ProtoField from the fieldRepo. If it does not exist,
 -- it is first created and added to the repo. 
 local function createProtoField(abbr, name, desc, len, type)
-	local len = len or ''
+	assert(abbr, 'columns cannot be nil')
+	assert(name, 'columns cannot be nil')
 	local len = len or ''
 	local type = type or 'STRING'
 	
@@ -27,7 +27,7 @@ local function createProtoField(abbr, name, desc, len, type)
 	end	
 	
 	local repoFieldName = abbr	
-	local f = Field.repo[repoFieldName]
+	local f = fieldRepo[repoFieldName]
 	
 	-- If a field with the same abbr exists in the repo we need to check
 	-- the type and length as well. All three should much. Otherwise we
@@ -35,7 +35,7 @@ local function createProtoField(abbr, name, desc, len, type)
 	if f and f.len ~= len then
 		warn('A field with name ' .. f.name .. ' and different length already exists.')
 		repoFieldName = repoFieldName .. len
-		f = Field.repo[repoFieldName]
+		f = fieldRepo[repoFieldName]
 	end
 	
 	local protoField = nil
@@ -43,10 +43,8 @@ local function createProtoField(abbr, name, desc, len, type)
 	if f then
 		protoField = f.protoField
 	else
-		--print(repoFieldName)
 		protoField = ProtoField.new(name, repoFieldName, ftype, nil, nil, nil, desc)
-		--print('ok')
-		Field.repo[repoFieldName] = { name = name,
+		fieldRepo[repoFieldName] = { name = name,
 									  abbr = abbr,
 									  len = len,
 									  ftype = ftype,
@@ -229,6 +227,8 @@ function Field.REPEATING(repeatsField, compositeField)
 	}
 end
 
+Field['REPEATING-END'] = 'dummy'
+
 --[[ 
 	Read a message spec from a CSV file. 
 
@@ -258,10 +258,6 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 		return string.lower(abbrPrefix .. string.gsub(name, '[^%a%d]', ''))
 	end
 	
-	local function validateType(fieldType)
-		return Field[fieldType]
-	end
-	
 	local spec = {}
 
 	local i = 1
@@ -278,7 +274,7 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 			length = createAbbr(length)
 		end
 		
-		local fieldType = ln[columns.type]
+		local fieldType = string.upper(ln[columns.type])
 		if not Field[fieldType] then
 			fieldType = 'STRING'
 		end
@@ -334,23 +330,32 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 	assert(msgSpec, 'msgSpec cannot be nil');	
 
 	-- Create Field.X object for each field in the spec
-	local bodyFields = {}	
-	for i, f in ipairs(msgSpec) do
-		-- Handle complex types.
+	local bodyFields = {}
+	local i = 1
+	while i <= #msgSpec do
+		local f = msgSpec[i]
+		
 		if f.type == 'REPEATING' then
 			local lenField = fieldByAbbr(f.len, bodyFields)
 			assert(lenField, f.len .. ' does not match an existing abbr in message ' .. id)
 			
 			local repeatingFields = {}
-			for ii = i + 1, #msgSpec do
+			local ii = i + 1
+			while ii <= #msgSpec do
 				local ff = msgSpec[ii]
+				
+				if ff.type == 'REPEATING-END' then
+					break
+				end
+				
 				repeatingFields[#repeatingFields + 1] = createSimpleField(ff)
+				ii = ii + 1
 			end
+			i = ii
 			repeatingFields['title'] = f.name
 			
 			local repeatingComposite = Field.COMPOSITE(repeatingFields)
-			bodyFields[#bodyFields + 1] = Field.REPEATING(lenField, repeatingComposite)			
-			break
+			bodyFields[#bodyFields + 1] = Field.REPEATING(lenField, repeatingComposite)						
 		elseif f.type == 'VARLEN' then
 			local lenField = fieldByAbbr(f.len, bodyFields)
 			assert(lenField, f.len .. ' does not match an existing abbr in message ' .. id)
@@ -359,11 +364,13 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 													   f.abbr,
 													   f.name,
 													   f.desc,
-													   f.offset)
+													   f.offset)			
 		else -- Everything else is a simple type
-			bodyFields[#bodyFields + 1] = createSimpleField(f)
+			bodyFields[#bodyFields + 1] = createSimpleField(f)			
 		end
-	end	
+		
+		i = i + 1
+	end
 	bodyFields['title'] = 'Body'
 		
 	local msgFields = {}		
@@ -523,7 +530,7 @@ local function createProtoHelper(proto)
 				msgParsers[v.name] = self:createParser(msgSpecs[v.name])				
 			end
 
-			for i, f in pairs(Field.repo) do				
+			for i, f in pairs(fieldRepo) do				
 				self:trace('Adding ' .. i .. ' to proto.fields')
 				table.insert(self.protocol.fields, f.protoField)				
 			end

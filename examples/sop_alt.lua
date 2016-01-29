@@ -10,7 +10,7 @@
 --
 local wsdh = dofile(WSDH_SCRIPT_PATH .. 'ws_dissector_helper.lua')
 
-sop = Proto('SOP_ALT', 'Simple Order Protocol - alt')
+local sop = Proto('SOP_ALT', 'Simple Order Protocol - alt')
 -- a table of our default settings - these can be changed by changing
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
@@ -29,9 +29,9 @@ local msg_types = { { name = 'NO', file = 'NO_full.csv' },
 
 -- Define fields
 local SopFields = {
-	SOH = wsdh.Field.FIXED(1,'sop.SOH', 'SOH', '\x01','Start of Header'),
-	LEN = wsdh.Field.NUMERIC(3,'sop.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
-	ETX = wsdh.Field.FIXED(1, 'sop.ETX', 'ETX', '\x03','End of Message')
+	SOH = wsdh.Field.FIXED(1,'sop_alt.SOH', 'SOH', '\x01','Start of Header'),
+	LEN = wsdh.Field.NUMERIC(3,'sop_alt.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
+	ETX = wsdh.Field.FIXED(1, 'sop_alt.ETX', 'ETX', '\x03','End of Message')
 }
 					
 -- Column mapping.
