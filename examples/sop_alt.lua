@@ -10,11 +10,11 @@
 --
 local wsdh = dofile(WSDH_SCRIPT_PATH .. 'ws_dissector_helper.lua')
 
-sop = Proto('SOP', 'Simple Order Protocol')
+sop = Proto('SOP_ALT', 'Simple Order Protocol - alt')
 -- a table of our default settings - these can be changed by changing
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
-	ports = '9001-9010',
+	ports = '9011-9020',
 	trace = true
 }
 local helper = wsdh.createProtoHelper(sop)
