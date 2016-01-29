@@ -43,40 +43,40 @@ Getting started
 Create a lua script for our new dissector. Let's name it *sop.lua* since the dissector we will create will be for the SOP protocol (an imaginary protocol used in this example).
 
 Add the following lines at the end of Wireshark's **init.lua** script:
-``` lua
-WSDH_SCRIPT_PATH="path to the directory src of the repo"
-SOP_SPECS_PATH="path to the directory of the CSV specs"
-dofile("path to sop.lua")
+```lua
+WSDH_SCRIPT_PATH='path to the directory src of the repo'
+SOP_SPECS_PATH='path to the directory of the CSV specs'
+dofile('path to sop.lua')
 ```
 
 Then in the **sop.lua** file:
 
 Create a Proto object for your dissector. The Proto class is part of Wireshark's Lua API.
-``` lua
+```lua
 sop = Proto('SOP', 'Simple Order Protocol')
 ```
 
 Load the ws_dissector_helper script. We will use the `wsdh` object to access various helper functions.
-``` lua
+```lua
 local wsdh = dofile(WSDH_SCRIPT_PATH .. 'ws_dissector_helper.lua')
 ```
 
 Create the proto helper. Note that we pass the Proto object to the `createProtoHelper` factory function.
-``` lua
+```lua
 local helper = wsdh.createProtoHelper(sop)
 ```
 
 Create a table with the values for the default settings. The values can be changed from the *Protocols* section of Wireshark's *Preferences* dialog.
-``` lua
+```lua
 local defaultSettings = {
-	ports = '7001-7010',
+	ports = '9001-9010',
 	trace = true
 }
 helper:setDefaultPreference(defaultSettings)
 ```
 
 Define the protocol's message types. Each message type has a *name* and *file* property. The file property is the filename of the CSV file that contains the specification of the fields for the message type. Note that the CSV files should be located in *SOP_SPECS_PATH*.
-``` lua
+```lua
 local msg_types = { { name = 'NO', file = 'NO.csv' }, 
 				    { name = 'OC', file = 'OC.csv' },
 					{ name = 'TR', file = 'TR.csv' },
@@ -87,7 +87,7 @@ Define fields for the header and trailer. If your CSV files contain all the mess
 ```lua
 local SopFields = {
 	SOH = wsdh.Field.FIXED(1,'sop.header.SOH', 'SOH', '\x01','Start of Header'),
-	LEN = wsdh.Field.STRING(3,'sop.header.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
+	LEN = wsdh.Field.NUMERIC(3,'sop.header.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
 	ETX = wsdh.Field.FIXED(1, 'sop.trailer.ETX', 'ETX', '\x03','End of Message')
 }
 ```
@@ -97,7 +97,7 @@ Then define the Header and Trailer objects. Note that these objects are actually
 local header = wsdh.Field.COMPOSITE{
 	title = 'Header',
 	SopFields.SOH,
-	SopFields.LEN	
+	SopFields.LEN
 }
 
 local trailer = wsdh.Field.COMPOSITE{
@@ -123,7 +123,6 @@ Now let's load the specs using the `loadSpecs` function of the `helper` object. 
 The function returns two tables. One containing the message specs and another containing parsers for the message specs. Each message spec has an id, a description and all the fields created from the CSV in a similar fashion to the one we used previously to create `SopFields`. Each message parser is specialized for a specific message type and they include the boilerplate code needed to handle the parsing of a message.
 
 ```lua
-
 -- Column mapping. As described above.
 local columns = { name = 'Field', 
 				  length = 'Length', 
@@ -131,27 +130,28 @@ local columns = { name = 'Field',
 				  desc = 'Description' }
 
 local msg_specs, msg_parsers = helper:loadSpecs(msg_types,
-													 SOP_SPECS_PATH,
-													 columns,
-													 header:len(),
-													 ',',
-													 header,
-													 trailer)
+											    SOP_SPECS_PATH,
+											    columns,
+											    header:len(),
+											    ',',
+											    header,
+											    trailer)
 ```
 
 Now let's create a few helper functions that will simplify the main parse function.
 
 ```lua
--- Returns the length of whole the message. Includes header and trailer.
-local function getMsgLen(msgBuffer)
-	return SopFields.SOH:len() + SopFields.LEN:len() + 
-		   tonumber(helper:getHeaderValue(msgBuffer, SopFields.LEN)) + 
-		   trailer:len()
+-- Returns the length of the message from the end of header up to the start 
+-- of trailer.
+local function getMsgDataLen(msgBuffer)
+	return helper:getHeaderValue(msgBuffer, SopFields.LEN)
 end
 
--- Returns the length of the message from the end of header up to the start of trailer.
-local function getMsgDataLen(msgBuffer)
-	return getMsgLen(msgBuffer) - header:len() - trailer:len()
+-- Returns the length of whole the message. Includes header and trailer.
+local function getMsgLen(msgBuffer)
+	return header:len() + 
+		   getMsgDataLen(msgBuffer) + 
+		   trailer:len()
 end
 ```
 
@@ -162,14 +162,15 @@ local function parseMessage(buffer, pinfo, tree)
 	-- must include the header and the MessageType.
 	local msgTypeLen = 2
 	local minBufferLen = header:len() + msgTypeLen
-	
 	-- Messages start with SOH.
+
 	if SopFields.SOH:value(buffer) ~= SopFields.SOH.fixedValue then
 		helper:trace('Frame: ' .. pinfo.number .. ' No SOH.')
 		return 0
 	end	
 
-	-- Return missing message length in the case when the header is split between packets.	
+	-- Return missing message length in the case when the header is split 
+	-- between packets.	
 	if buffer:len() <= minBufferLen then
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
@@ -178,30 +179,31 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgType = buffer(header:len(), msgTypeLen):string()
 	local msgSpec = msg_specs[msgType]
 	if not msgSpec then
-		helper:trace('Frame: ' .. pinfo.number .. ' Unknown message type: ' .. msgType)
+		helper:trace('Frame: ' .. pinfo.number .. 
+					 ' Unknown message type: ' .. msgType)
 		return 0
 	end
 
-	-- Return missing message length in the case when the data is split between packets.
+	-- Return missing message length in the case when the data is split 
+	-- between packets.
 	local msgLen = getMsgLen(buffer)
 	local msgDataLen = getMsgDataLen(buffer)
 	if buffer:len() < msgLen then
-		helper:trace('Frame: ' .. pinfo.number .. ' buffer:len < msgLen')
+		helper:trace('Frame: ' .. pinfo.number .. 
+					 ' buffer:len < msgLen')
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
 
-	-- Select the parser that corresponds to this type of message.
 	local msgParse = msg_parsers[msgType]
-	-- If no parser is found for this type of message, reject the whole packet.
+	-- If no parser is found for this type of message, reject the whole 
+	-- packet.
 	if not msgParse then
-		helper:trace('Frame: ' .. pinfo.number .. ' Not supported message type: ' .. msgType)
+		helper:trace('Frame: ' .. pinfo.number .. 
+					 ' Not supported message type: ' .. msgType)
 		return 0
 	end
 	
-	-- Parse the message and populate the tree.
 	local bytesConsumed, subtree = msgParse(buffer, pinfo, tree, 0)
-	
-	-- Finally add some useful info to the protocol node of the tree. For this example we simply add the message type and length.
 	subtree:append_text(', Type: ' .. msgType)	
 	subtree:append_text(', Len: ' .. msgLen)
 
@@ -230,7 +232,7 @@ Installation
 
 Add the following lines at the end of Wireshark's `init.lua` script:
 
-``` lua
+```lua
 WSDH_SCRIPT_PATH='path to the directory src of the repo'
 SOP_SPECS_PATH='path to the directory of the CSV specs'
 dofile('path to your dissector file')
