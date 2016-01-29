@@ -1,7 +1,7 @@
 Simple Order Protocol (sop). An imaginary protocol.
 ========
 
-This is a simple, text protocol for an imaginary stock exchange. With it you can place simple orders in order make trades.
+This is a simple, text protocol for an imaginary stock exchange. Use it to place simple orders and make simple trades.
 
 All message types follow the format HEADER|PAYLOAD|TRAILER (note that '|' is not included in the protocol).
 
