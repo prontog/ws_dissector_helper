@@ -9,7 +9,7 @@
 --
 local wsdh = dofile(WSDH_SCRIPT_PATH .. 'ws_dissector_helper.lua')
 
-sop = Proto('SOP', 'Simple Order Protocol')
+local sop = Proto('SOP', 'Simple Order Protocol')
 -- a table of our default settings - these can be changed by changing
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
