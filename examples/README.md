@@ -45,9 +45,9 @@ Installation
 Add the following lines at the end of Wireshark's `init.lua` script:
 
 ``` lua
-WSDH_SCRIPT_PATH="Replace this with the path to the directory src of the repo."
-SOP_SPECS_PATH="Replace this with the path to the directory of the CSV specs."
-dofile("Replace with full path to this file.")
+WSDH_SCRIPT_PATH='path to the directory src of the repo'
+SOP_SPECS_PATH='path to the directory of the CSV specs'
+dofile('path to sop.lua or sop_alt.lua')
 ```
 
 Testing

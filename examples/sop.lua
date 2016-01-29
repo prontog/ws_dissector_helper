@@ -3,11 +3,11 @@
 --
 -- IMPORTANT: Add the following lines at the end of Wireshark's init.lua:
 --
--- WSDH_SCRIPT_PATH="path to the directory 'src' of the repo."
--- SOP_SPECS_PATH="path to the directory of the CSV specs."
--- dofile("Replace with full path to this file.")
+-- WSDH_SCRIPT_PATH='path to the directory 'src' of the repo'
+-- SOP_SPECS_PATH='path to the directory of the CSV specs'
+-- dofile('path to this file')
 --
-local wsdh = dofile(WSDH_SCRIPT_PATH .. "ws_dissector_helper.lua")
+local wsdh = dofile(WSDH_SCRIPT_PATH .. 'ws_dissector_helper.lua')
 
 sop = Proto('SOP', 'Simple Order Protocol')
 -- a table of our default settings - these can be changed by changing

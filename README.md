@@ -44,9 +44,9 @@ Create a lua script for our new dissector. Let's name it *sop.lua* since the dis
 
 Add the following lines at the end of Wireshark's **init.lua** script:
 ``` lua
-WSDH_SCRIPT_PATH="Replace this with the path to the directory src of the repo."
-SOP_SPECS_PATH="Replace this with the path to the directory of the CSV specs."
-dofile("Replace with full path to the sop.lua file")
+WSDH_SCRIPT_PATH="path to the directory src of the repo"
+SOP_SPECS_PATH="path to the directory of the CSV specs"
+dofile("path to sop.lua")
 ```
 
 Then in the **sop.lua** file:
@@ -58,12 +58,12 @@ sop = Proto('SOP', 'Simple Order Protocol')
 
 Load the ws_dissector_helper script. We will use the `wsdh` object to access various helper functions.
 ``` lua
-local wsdh = dofile(WSDH_SCRIPT_PATH .. "ws_dissector_helper.lua")
+local wsdh = dofile(WSDH_SCRIPT_PATH .. 'ws_dissector_helper.lua')
 ```
 
 Create the proto helper. Note that we pass the Proto object to the `createProtoHelper` factory function.
 ``` lua
-local protoHelper = wsdh.createProtoHelper(sop)
+local helper = wsdh.createProtoHelper(sop)
 ```
 
 Create a table with the values for the default settings. The values can be changed from the *Protocols* section of Wireshark's *Preferences* dialog.
@@ -72,7 +72,7 @@ local defaultSettings = {
 	ports = '7001-7010',
 	trace = true
 }
-protoHelper:setDefaultPreference(defaultSettings)
+helper:setDefaultPreference(defaultSettings)
 ```
 
 Define the protocol's message types. Each message type has a *name* and *file* property. The file property is the filename of the CSV file that contains the specification of the fields for the message type. Note that the CSV files should be located in *SOP_SPECS_PATH*.
@@ -106,7 +106,7 @@ local trailer = wsdh.Field.COMPOSITE{
 }
 ```
 
-Now let's load the specs using the `loadSpecs` function of the `protoHelper` object. The parameters of this function are:
+Now let's load the specs using the `loadSpecs` function of the `helper` object. The parameters of this function are:
 
 1. msgTypes		this is a table of message types. Each type has two properties: name and file.
 1. dir			the directory were the CSV files are located
@@ -130,7 +130,7 @@ local columns = { name = 'Field',
 				  type = 'Type',
 				  desc = 'Description' }
 
-local msg_specs, msg_parsers = protoHelper:loadSpecs(msg_types,
+local msg_specs, msg_parsers = helper:loadSpecs(msg_types,
 													 SOP_SPECS_PATH,
 													 columns,
 													 header:len(),
@@ -145,7 +145,7 @@ Now let's create a few helper functions that will simplify the main parse functi
 -- Returns the length of whole the message. Includes header and trailer.
 local function getMsgLen(msgBuffer)
 	return SopFields.SOH:len() + SopFields.LEN:len() + 
-		   tonumber(protoHelper:getHeaderValue(msgBuffer, SopFields.LEN)) + 
+		   tonumber(helper:getHeaderValue(msgBuffer, SopFields.LEN)) + 
 		   trailer:len()
 end
 
@@ -165,7 +165,7 @@ local function parseMessage(buffer, pinfo, tree)
 	
 	-- Messages start with SOH.
 	if SopFields.SOH:value(buffer) ~= SopFields.SOH.fixedValue then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' No SOH.')
+		helper:trace('Frame: ' .. pinfo.number .. ' No SOH.')
 		return 0
 	end	
 
@@ -178,7 +178,7 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgType = buffer(header:len(), msgTypeLen):string()
 	local msgSpec = msg_specs[msgType]
 	if not msgSpec then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' Unknown message type: ' .. msgType)
+		helper:trace('Frame: ' .. pinfo.number .. ' Unknown message type: ' .. msgType)
 		return 0
 	end
 
@@ -186,7 +186,7 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgLen = getMsgLen(buffer)
 	local msgDataLen = getMsgDataLen(buffer)
 	if buffer:len() < msgLen then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' buffer:len < msgLen')
+		helper:trace('Frame: ' .. pinfo.number .. ' buffer:len < msgLen')
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
 
@@ -194,7 +194,7 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgParse = msg_parsers[msgType]
 	-- If no parser is found for this type of message, reject the whole packet.
 	if not msgParse then
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' Not supported message type: ' .. msgType)
+		helper:trace('Frame: ' .. pinfo.number .. ' Not supported message type: ' .. msgType)
 		return 0
 	end
 	
@@ -212,12 +212,12 @@ end
 
 Now that the parse function for the SOP protocol is ready, we need to create the dissector function using the `getDissector` helper function which returns a dissector function containing the basic while loop that pretty much all dissectors need to have. 
 ```lua
-sop.dissector = protoHelper:getDissector(parseMessage)
+sop.dissector = helper:getDissector(parseMessage)
 ```
 
 Finally enable the dissector. `enableDissector` registers the ports to the TCP dissector table. 
 ```lua
-protoHelper:enableDissector()
+helper:enableDissector()
 ```
 
 An example
@@ -231,9 +231,9 @@ Installation
 Add the following lines at the end of Wireshark's `init.lua` script:
 
 ``` lua
-WSDH_SCRIPT_PATH="Replace this with the path to the directory src of the repo."
-SOP_SPECS_PATH="Replace this with the path to the directory of the CSV specs."
-dofile("Replace with full path to your dissector file.")
+WSDH_SCRIPT_PATH='path to the directory src of the repo'
+SOP_SPECS_PATH='path to the directory of the CSV specs'
+dofile('path to your dissector file')
 ```
 
 Testing
