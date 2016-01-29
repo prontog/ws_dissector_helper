@@ -29,7 +29,7 @@ local msg_types = { { name = 'NO', file = 'NO.csv' },
 -- Define fields
 local SopFields = {
 	SOH = wsdh.Field.FIXED(1,'sop.header.SOH', 'SOH', '\x01','Start of Header'),
-	LEN = wsdh.Field.STRING(3,'sop.header.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
+	LEN = wsdh.Field.NUMERIC(3,'sop.header.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
 	ETX = wsdh.Field.FIXED(1, 'sop.trailer.ETX', 'ETX', '\x03','End of Message')
 }
 --Define Header
