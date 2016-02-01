@@ -1,5 +1,5 @@
-Field,Length,Type
-msgType,2,
-textLen,4,
-text,textLen,VARLEN
-source,16,
+Field,Length,Type,Description
+msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD.
+textLen,4,,Length of text field.
+text,textLen,VARLEN,Free format text string.
+source,16,,Source of the news.

@@ -1,9 +1,9 @@
-Field,Length,Type
-msgType,2,
-side,1,
-type,3,
-volume,7,NUMERIC
-symbol,12,
-price,8,NUMERIC
-clientId,16,
-accountId,16,
+Field,Length,Type,Description
+msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD.
+side,1,,Side of order. B for buy, S for sell.
+type,3,,Order type. LMT for limit, MKT for market.
+volume,7,NUMERIC,Number of shares.
+symbol,12,,Ticker symbol.
+price,8,NUMERIC,Price per unit of quantity (e.g. per share)
+clientId,16,,Unique identifier for Order as assigned by the client.
+accountId,16,,Identifier for the account of be used for clearance.
