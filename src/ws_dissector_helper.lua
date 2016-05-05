@@ -33,7 +33,7 @@ local function createProtoField(abbr, name, desc, len, type)
 	-- the type and length as well. All three should much. Otherwise we
 	-- need to create a new ProtoField.
 	if f and f.len ~= len then
-		warn('A field with name ' .. f.name .. ' and different length already exists.')
+		warn('A field with name "' .. f.name .. '" and different length (' .. f.len .. ') already exists.')
 		repoFieldName = repoFieldName .. len
 		f = fieldRepo[repoFieldName]
 	end
