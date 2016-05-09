@@ -129,6 +129,10 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		end,
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
+			if value == nil then
+				warn('NUMERIC field with nil value. This could be a locale issue (floating point).')
+				value = 0
+			end
 			local subTree = tree:add(self.proto, buf, value)
 			return self:len(), subTree
 		end
@@ -475,7 +479,7 @@ local function createProtoHelper(proto)
 			
 			self.protocol.prefs.ports = Pref.range('Ports', 
 											  defaultPrefs.ports,
-											  'Port range (i.e. 7001-70010,8005,8100)',
+											  'Port range (i.e. 7001-7010,8005,8100)',
 											  65535)
 			self.protocol.prefs.trace = Pref.bool('Trace', 
 											 defaultPrefs.trace,
