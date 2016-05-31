@@ -67,7 +67,7 @@ do
 		ipSrc = $7
 		ipDst = $8
 		
-		# Keep only the messages that contain all
+		# Keep only the messages that contain alluse 
 		fi = 0
 		for(i in msgTypes) {
 			#print i, msgTypes[i], clientIds[i]
@@ -76,7 +76,7 @@ do
 				filteredMsgTypes[fi] = msgTypes[i]			
 			}
 		}
-		# Skill line if there was no messages to print.
+		# Skip line if there was no messages to print.
 		if (fi == 0) {
 			next
 		}
@@ -87,7 +87,6 @@ do
 			next
 		}
 		
-		#print $0 > "/dev/stderr"
 		for(i in filteredMsgTypes) {
 			print frame, dateTime, filteredMsgTypes[i], clientIds[i], 
 				  ethSrc, ethDst, ipSrc, ipDst
