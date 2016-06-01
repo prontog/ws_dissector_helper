@@ -32,10 +32,10 @@ fi
 
 TSHARK_DISP_FILTER="-Y sop"
 TSHARK_OUT_FIELDS="-e frame.number -e _ws.col.Time -e sop.msgtype -e sop.clientid -e eth.src -e eth.dst -e ip.src -e ip.dst"
-TSHARK_CMD="tshark.exe $TSHARK_DISP_FILTER -Tfields -Eheader=n -Eseparator=';' $TSHARK_OUT_FIELDS"
+TSHARK_CMD="tshark.exe $TSHARK_DISP_FILTER -T fields -E header=n -E separator=',' -E aggregator=';' $TSHARK_OUT_FIELDS"
 
 # Print header.
-echo frame,dateTime,msgType,clientId,ethSrc,ethDst,ipSrc,ipDst
+echo frame,dateTime,msgType,clientId,ethSrc,ethDst,ipSrc,ipDst,capFile
 
 until [[ -z $1 ]]
 do
@@ -47,9 +47,9 @@ do
 
 	set -o errexit
 
-	eval $TSHARK_CMD -r $CAP_FILE $TSHARK_STDERR | awk '
+	eval $TSHARK_CMD -r $CAP_FILE $TSHARK_STDERR | awk -v CAP_FILE="${CAP_FILE##*/}" '
 	BEGIN { 
-		FS = ";"
+		FS = ","
 		OFS = ","
 		# These are the msg types that contain the clientId field. All other msg
 		# types will be discarded.
@@ -60,8 +60,8 @@ do
 		frame = $1
 		dateTime = $2
 		# Message types and clientIds are split into arrays.
-		split($3, msgTypes, ",")
-		split($4, clientIds, ",")
+		split($3, msgTypes, ";")
+		split($4, clientIds, ";")
 		ethSrc = $5
 		ethDst = $6
 		ipSrc = $7
@@ -89,7 +89,7 @@ do
 		
 		for(i in filteredMsgTypes) {
 			print frame, dateTime, filteredMsgTypes[i], clientIds[i], 
-				  ethSrc, ethDst, ipSrc, ipDst
+				  ethSrc, ethDst, ipSrc, ipDst, CAP_FILE
 		}	
 		delete filteredMsgTypes
 	}'
