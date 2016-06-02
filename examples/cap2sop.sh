@@ -51,8 +51,8 @@ do
 	BEGIN { 
 		FS = ","
 		OFS = ","
-		# These are the msg types that contain the clientId field. All other msg
-		# types will be discarded.
+		# These are the msg types that contain the clientId field. All other
+		# message types will be discarded.
 		msgTypesToPrint = "NO,OC,RJ"
 	}
 
@@ -67,20 +67,22 @@ do
 		ipSrc = $7
 		ipDst = $8
 		
-		# Keep only the messages that contain alluse 
+		# Copy the messages types that are included in msgTypesToPrint to 
+		# array filteredMsgTypes.
 		fi = 0
 		for(i in msgTypes) {
-			#print i, msgTypes[i], clientIds[i]
 			if (match(msgTypesToPrint, msgTypes[i])) {
 				fi++
 				filteredMsgTypes[fi] = msgTypes[i]			
 			}
 		}
+		
 		# Skip line if there was no messages to print.
 		if (fi == 0) {
 			next
 		}
 		
+		# filteredMsgTypes should have the same length with clientIds.
 		if (length(filteredMsgTypes) != length(clientIds)) {
 			printf("Skipping frame %d because of missing fields (%d, %d).", 
 					frame, length(filteredMsgTypes), length(clientIds)) > "/dev/stderr"
@@ -90,7 +92,9 @@ do
 		for(i in filteredMsgTypes) {
 			print frame, dateTime, filteredMsgTypes[i], clientIds[i], 
 				  ethSrc, ethDst, ipSrc, ipDst, CAP_FILE
-		}	
+		}
+		
+		# Clean up array filteredMsgTypes before moving to the next line.
 		delete filteredMsgTypes
 	}'
 
