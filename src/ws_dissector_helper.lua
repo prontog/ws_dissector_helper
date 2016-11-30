@@ -130,7 +130,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
 			if value == nil then
-				warn('NUMERIC field with nil value. This could be a locale issue (floating point).')
+				warn('NUMERIC field ' .. self.name ..  ' with nil value. This could be a locale issue (floating point).')
 				value = 0
 			end
 			local subTree = tree:add(self.proto, buf, value)
@@ -329,9 +329,9 @@ end
 -- of readSpec. header is a Field to be added before the fields found in spec. 
 -- trailer is a Field to be added after the fields found in spec.
 local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)	
-	assert(id, 'id cannot be nil');
+	assert(id, 'id cannot be nil')
 	description = description or ''
-	assert(msgSpec, 'msgSpec cannot be nil');	
+	assert(msgSpec, 'msgSpec cannot be nil')
 
 	-- Create Field.X object for each field in the spec
 	local bodyFields = {}
@@ -400,7 +400,8 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 end
 
 local function createProtoHelper(proto)
-	assert(proto, 'proto cannot be nil');
+	assert(proto, 'proto cannot be nil')
+	
 	return {
 		protocol = proto,
 		trace = function(self, ...)		
@@ -504,7 +505,7 @@ local function createProtoHelper(proto)
 				for i, field in ipairs(fieldsSpec) do		
 					if field.type then
 						if (field.type == 'FIXED') and (field:valueSingle(buf, bytesConsumed) ~= field.fixedValue) then
-							self:trace('invalid fixed value')
+							seld:trace('invalid fixed value for field ' .. field.name)
 							return 0
 						end				
 						local fieldLen = field:add_to(subtree, buf, bytesConsumed)				
