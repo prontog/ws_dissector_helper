@@ -1,5 +1,5 @@
 Field,Length,Type,Description
 msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD.
-clientId,16,,Client Id
+clientId,16,,Unique identifier for Order as assigned by the client.
 rejectionCode,3,NUMERIC,Rejection Code
 text,48,,Text explaining the rejection

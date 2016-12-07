@@ -1,7 +1,7 @@
 Field,Length,Type,Description
 msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD.
-side,1,,Side of order. B for buy, S for sell.
-type,3,,Order type. LMT for limit, MKT for market.
+side,1,,"Side of order. B for buy, S for sell."
+type,3,,"Order type. LMT for limit, MKT for market."
 volume,7,NUMERIC,Number of shares.
 symbol,12,,Ticker symbol.
 price,8,NUMERIC,Price per unit of quantity (e.g. per share)
