@@ -32,7 +32,7 @@ fi
 
 TSHARK_DISP_FILTER="-Y sop"
 TSHARK_OUT_FIELDS="-e frame.number -e _ws.col.Time -e sop.msgtype -e sop.clientid -e eth.src -e eth.dst -e ip.src -e ip.dst"
-TSHARK_CMD="tshark.exe $TSHARK_DISP_FILTER -T fields -E header=n -E separator=',' -E aggregator=';' $TSHARK_OUT_FIELDS"
+TSHARK_CMD="tshark.exe $TSHARK_DISP_FILTER -T fields -E header=n -E separator=',' -E aggregator=';' -o column.format:'Time,%At' $TSHARK_OUT_FIELDS"
 
 # Print header.
 echo frame,dateTime,msgType,clientId,ethSrc,ethDst,ipSrc,ipDst,capFile
