@@ -523,8 +523,8 @@ local function createProtoHelper(proto)
 			local msgSpecs = {}
 			local msgParsers = {}
 			-- Read the CSV files into specs.
-			for i, v in ipairs(msgTypes) do	
-				specs[v.name] = readMsgSpec(dir .. v.file, 
+			for i, v in ipairs(msgTypes) do
+				specs[v.name] = readMsgSpec(dir .. "/" .. v.file, 
 									   columns,									   
 									   string.lower(self.protocol.name).. '.',
 									   offset,
