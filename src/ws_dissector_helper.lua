@@ -4,7 +4,12 @@ local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 -- Inspired by the Athena dissector by FlavioJS.
 -------------------------------------------------
 
-local wsdh = {}
+-- This object will be updated by the createProtoHelper function.
+local wsdh = {
+	trace = function(self, ...)		
+		debug('wsdh Trace:', ...)
+	end
+}
 
 -- Field table will contain 
 local Field = {}
@@ -33,7 +38,7 @@ local function createProtoField(abbr, name, desc, len, type)
 	-- the type and length as well. All three should much. Otherwise we
 	-- need to create a new ProtoField.
 	if f and f.len ~= len then
-		-- warn('A field with name "' .. f.name .. '" and different length (' .. f.len .. ') already exists.')
+		wsdh:trace('A field with name "' .. f.name .. '" and different length (' .. f.len .. ') already exists.')
 		repoFieldName = repoFieldName .. len
 		f = fieldRepo[repoFieldName]
 	end
@@ -76,7 +81,7 @@ function Field.FIXED(len, abbr, name, fixedValue, desc)
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
 			if value ~= self.fixedValue then
-				debug('invalid fixed value for field ' .. self.name)
+				wsdh:trace('invalid fixed value for field ' .. self.name)
 				return 0
 			end	
 			
@@ -135,7 +140,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
 			if value == nil then
-				warn('NUMERIC field ' .. self.name ..  ' with nil value. This could be a locale issue (floating point).')
+				wsdh:trace('NUMERIC field ' .. self.name ..  ' with nil value. This could be a locale issue (floating point).')
 				value = 0
 			end
 			local subTree = tree:add(self.proto, buf, value)
@@ -413,7 +418,7 @@ end
 local function createProtoHelper(proto)
 	assert(proto, 'proto cannot be nil')
 	
-	return {
+	wsdh = {
 		protocol = proto,
 		trace = function(self, ...)		
 			if self.protocol.prefs.trace then
@@ -573,6 +578,8 @@ local function createProtoHelper(proto)
 			return trailerField:valueSingle(msgBuffer, self.trailer:getOffset(trailerField.abbr))
 		end
 	}
+	
+	return wsdh
 end
 
 return {
