@@ -33,7 +33,7 @@ local function createProtoField(abbr, name, desc, len, type)
 	-- the type and length as well. All three should much. Otherwise we
 	-- need to create a new ProtoField.
 	if f and f.len ~= len then
-		warn('A field with name "' .. f.name .. '" and different length (' .. f.len .. ') already exists.')
+		-- warn('A field with name "' .. f.name .. '" and different length (' .. f.len .. ') already exists.')
 		repoFieldName = repoFieldName .. len
 		f = fieldRepo[repoFieldName]
 	end
@@ -75,6 +75,11 @@ function Field.FIXED(len, abbr, name, fixedValue, desc)
 		fixedValue = fixedValue,
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
+			if value ~= self.fixedValue then
+				debug('invalid fixed value for field ' .. self.name)
+				return 0
+			end	
+			
 			local subTree = tree:add(self.proto, buf, value)
 			return self:len(), subTree
 		end
@@ -200,7 +205,10 @@ function Field.COMPOSITE(fields)
 			
 			local addedBytes = 0
 			for _, field in ipairs(fields) do
-				local fieldLen = field:add_to(subTree, tvb, off + addedBytes)				
+				local fieldLen = field:add_to(subTree, tvb, off + addedBytes)
+				if fieldLen == 0 then
+					return 0
+				end
 				addedBytes = addedBytes + fieldLen
 			end
 			subTree:set_len(addedBytes)
@@ -223,6 +231,9 @@ function Field.REPEATING(repeatsField, compositeField)
 			local addedBytes = 0
 			for i = 1, repeats do
 				local fieldLen, subTree = self.composite:add_to(tree, tvb, off + addedBytes)
+				if fieldLen == 0 then
+					return 0
+				end
 				subTree:append_text(' ' .. i)
 				addedBytes = addedBytes + fieldLen
 			end
@@ -503,12 +514,12 @@ local function createProtoHelper(proto)
 										 self.protocol.name .. ' Protocol')
 
 				for i, field in ipairs(fieldsSpec) do		
-					if field.type then
-						if (field.type == 'FIXED') and (field:valueSingle(buf, bytesConsumed) ~= field.fixedValue) then
-							seld:trace('invalid fixed value for field ' .. field.name)
-							return 0
-						end				
+					if field.type then			
 						local fieldLen = field:add_to(subtree, buf, bytesConsumed)				
+						if fieldLen == 0 then
+							subtree.hidden = true
+							return 0
+						end
 						bytesConsumed = bytesConsumed + fieldLen
 					end 
 				end
