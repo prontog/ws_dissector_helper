@@ -85,7 +85,10 @@ function Field.FIXED(len, abbr, name, fixedValue, desc)
 				return 0
 			end	
 			
-			local subTree = tree:add(self.proto, buf, value)
+			local subTree = nil
+			if tree then
+				subTree = tree:add(self.proto, buf, value)
+			end
 			return self:len(), subTree
 		end
 	}
@@ -112,7 +115,12 @@ function Field.STRING(len, abbr, name, desc, offset)
 		end,
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
-			local subTree = tree:add(self.proto, buf, value)
+
+			local subTree = nil
+			if tree then
+				subTree = tree:add(self.proto, buf, value)
+			end
+
 			return self:len(), subTree
 		end
 	}
@@ -143,7 +151,11 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 				wsdh:trace('NUMERIC field ' .. self.name ..  ' with nil value. This could be a locale issue (floating point).')
 				value = 0
 			end
-			local subTree = tree:add(self.proto, buf, value)
+			
+			local subTree = nil
+			if tree then
+				subTree = tree:add(self.proto, buf, value)
+			end
 			return self:len(), subTree
 		end
 	}
@@ -172,7 +184,11 @@ function Field.VARLEN(lenField, abbr, name, desc, offset)
 		end,
 		add_to = function(self, tree, tvb, off)			
 			local value, buf = self:value(tvb, off)
-			local subTree = tree:add(self.proto, buf, value)
+			
+			local subTree = nil
+			if tree then
+				subTree = tree:add(self.proto, buf, value)
+			end
 			return string.len(value), subTree
 		end
 	}
@@ -206,7 +222,11 @@ function Field.COMPOSITE(fields)
 		end,
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
-			local subTree = tree:add(buf, value)			
+			
+			local subTree = nil
+			if tree then
+				subTree = tree:add(buf, value)
+			end
 			
 			local addedBytes = 0
 			for _, field in ipairs(fields) do
@@ -216,7 +236,10 @@ function Field.COMPOSITE(fields)
 				end
 				addedBytes = addedBytes + fieldLen
 			end
-			subTree:set_len(addedBytes)
+			
+			if subTree then
+				subTree:set_len(addedBytes)
+			end
 			return addedBytes, subTree
 		end
 	}
@@ -239,7 +262,11 @@ function Field.REPEATING(repeatsField, compositeField)
 				if fieldLen == 0 then
 					return 0
 				end
-				subTree:append_text(' ' .. i)
+				
+				if subTree then
+					subTree:append_text(' ' .. i)
+				end
+				
 				addedBytes = addedBytes + fieldLen
 			end
 			return addedBytes, tree
@@ -512,8 +539,19 @@ local function createProtoHelper(proto)
 			assert(fieldsSpec, 'fieldsSpec cannot be nil')
 			
 			return function(buf, pkt, root)
-				local bytesConsumed = 0
+				local bytesValidated = 0				
+				-- Validate first.
+				for i, field in ipairs(fieldsSpec) do		
+					local fieldLen = field:add_to(nil, buf, bytesValidated)
+					if fieldLen == 0 then
+						-- Return without adding anything to the tree.
+						return 0
+					end
+					bytesValidated = bytesValidated + fieldLen
+				end
 				
+				-- Start adding to the tree.
+				local bytesConsumed = 0
 				local subtree = root:add(self.protocol, 
 										 buf(), 
 										 self.protocol.name .. ' Protocol')
@@ -522,7 +560,7 @@ local function createProtoHelper(proto)
 					if field.type then			
 						local fieldLen = field:add_to(subtree, buf, bytesConsumed)				
 						if fieldLen == 0 then
-							subtree.hidden = true
+							-- subtree.hidden = true
 							return 0
 						end
 						bytesConsumed = bytesConsumed + fieldLen
