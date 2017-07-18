@@ -6,6 +6,9 @@ local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 
 -- This object will be updated by the createProtoHelper function.
 local wsdh = {
+	createAbbr = function(self, name)
+		return createAbbr(name)
+	end,
 	trace = function(self, ...)
 		debug('wsdh Trace:', ...)
 	end
@@ -15,6 +18,10 @@ local wsdh = {
 local Field = {}
 
 local fieldRepo = {}
+
+local function createAbbr(name)
+	return string.lower(string.gsub(name, '[^%a%d%._]', ''))
+end
 
 -- Returns a ProtoField from the fieldRepo. If it does not exist,
 -- it is first created and added to the repo.
@@ -198,6 +205,7 @@ end
 
 function Field.COMPOSITE(fields)
 	return {
+		proto = createProtoField(wsdh:createAbbr(fields.title), fields.title, "", 0, 'COMPOSITE'),
 		type = 'COMPOSITE',
 		fields = fields,
 		title = fields.title,
@@ -228,8 +236,7 @@ function Field.COMPOSITE(fields)
 
 			local subTree = nil
 			if tree then
-				subTree = tree:add(buf, value)
-				subTree:set_text(self.title)
+				subTree = tree:add(self.proto, buf, value)
 			end
 
 			local addedBytes = 0
@@ -306,10 +313,6 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 	abbrPrefix = abbrPrefix or ''
 	offset = offset or 0
 
-	local function createAbbr(name)
-		return string.lower(abbrPrefix .. string.gsub(name, '[^%a%d]', ''))
-	end
-
 	local spec = {}
 
 	local i = 1
@@ -323,7 +326,7 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 		-- calculation. These fields can signify a repeating field with the len equal
 		-- to the abbr of an already existing field signifying the number of repeats.
 		if not tonumber(length) then
-			length = createAbbr(length)
+			length = createAbbr(abbrPrefix .. length)
 		end
 
 		local fieldType = string.upper(ln[columns.type])
@@ -334,7 +337,7 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 		local desc = ln[columns.desc]
 
 		spec[i] = { name = name,
-					abbr = createAbbr(name),
+					abbr = createAbbr(abbrPrefix .. name),
 					len = length,
 					offset = offset,
 					type = fieldType,
@@ -590,7 +593,7 @@ local function createProtoHelper(proto)
 			for i, v in ipairs(msgTypes) do
 				specs[v.name] = readMsgSpec(dir .. "/" .. v.file,
 									   columns,
-									   string.lower(self.protocol.name).. '.',
+									   self.abbrPrefix,
 									   offset,
 									   sep)
 				self:printMsgSpec(specs[v.name])
@@ -624,6 +627,10 @@ local function createProtoHelper(proto)
 			assert(self.trailer, 'self.trailer is nil')
 
 			return trailerField:valueSingle(msgBuffer, self.trailer:getOffset(trailerField.abbr))
+		end,
+		abbrPrefix = string.lower(proto.name) .. '.',
+		createAbbr = function(self, name)
+			return createAbbr(self.abbrPrefix .. name)
 		end
 	}
 
