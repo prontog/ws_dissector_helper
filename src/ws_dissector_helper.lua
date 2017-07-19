@@ -496,10 +496,16 @@ local function createProtoHelper(proto)
 				while (bytesConsumed < buffer:len()) do
 					local msgLength = parseFunction(buffer(bytesConsumed), pinfo, tree)
 					if msgLength > 0 then
+						self:trace('Frame: ' .. pinfo.number .. ' Parsed message of size ' .. msgLength .. '.')
 						bytesConsumed = bytesConsumed + msgLength
 					elseif msgLength == 0 then
-						self:trace('Frame: ' .. pinfo.number .. ' consumed no bytes.')
-						return 0
+						if bytesConsumed > 0 then
+							self:trace('Frame: ' .. pinfo.number .. ' Parsing the message did not complete. Skipping the rest of the packet.')
+							return
+						else
+							self:trace('Frame: ' .. pinfo.number .. ' Nothing could be parsed. Skipping packet.')
+							return 0
+						end
 					else
 						self:trace('Frame: ' .. pinfo.number,
 							  'Incomplete message.',
@@ -557,7 +563,7 @@ local function createProtoHelper(proto)
 					local fieldLen = field:add_to(nil, buf, bytesValidated)
 					if fieldLen == 0 then
 						-- Return without adding anything to the tree.
-						self:trace('field ' .. field.name .. ' is not valid. Ignoring packet.')
+						self:trace('field ' .. field.name .. ' is not valid.')
 						return 0
 					end
 					bytesValidated = bytesValidated + fieldLen
@@ -573,7 +579,7 @@ local function createProtoHelper(proto)
 					if field.type then
 						local fieldLen = field:add_to(subtree, buf, bytesConsumed)
 						if fieldLen == 0 then
-							self:trace('field ' .. field.name .. ' is empty. Ignoring packet.')
+							self:trace('field ' .. field.name .. ' is empty.')
 							return 0
 						end
 						bytesConsumed = bytesConsumed + fieldLen
