@@ -77,6 +77,7 @@ function Field.FIXED(len, abbr, name, fixedValue, desc)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
+			wsdh:trace('Getting value of field ' .. self.name)
 			local buf = tvb(off, self:len())
 			return buf:string(), buf
 		end,
@@ -114,6 +115,7 @@ function Field.STRING(len, abbr, name, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
+			wsdh:trace('Getting value of field ' .. self.name)
 			off = off or offset
 			local buf = tvb(off, self:len())
 			return buf:string(), buf
@@ -146,6 +148,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
+			wsdh:trace('Getting value of field ' .. self.name)
 			off = off or offset
 			local buf = tvb(off, self:len())
 			return tonumber(buf:string()), buf
@@ -183,6 +186,7 @@ function Field.VARLEN(lenField, abbr, name, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
+			wsdh:trace('Getting value of field ' .. self.name)
 			off = off or offset
 			local buf = tvb(off, self:len(tvb))
 			return buf:string(), buf
@@ -218,6 +222,7 @@ function Field.COMPOSITE(fields)
 			return length
 		end,
 		value = function(self, tvb, off)
+			wsdh:trace('Getting value of field ' .. self.name)
 			return fields.title, tvb(off)
 		end,
 		getOffset = function(self, abbr1)
@@ -560,6 +565,7 @@ local function createProtoHelper(proto)
 				local bytesValidated = 0
 				-- Validate first.
 				for i, field in ipairs(fieldsSpec) do
+					self:trace('Validating field ' .. field.name)
 					local fieldLen = field:add_to(nil, buf, bytesValidated)
 					if fieldLen == 0 then
 						-- Return without adding anything to the tree.
@@ -577,6 +583,7 @@ local function createProtoHelper(proto)
 
 				for i, field in ipairs(fieldsSpec) do
 					if field.type then
+						self:trace('Adding field ' .. field.name)
 						local fieldLen = field:add_to(subtree, buf, bytesConsumed)
 						if fieldLen == 0 then
 							self:trace('field ' .. field.name .. ' is empty.')
