@@ -325,8 +325,8 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 		local length = ln[columns.length]
 		local name = ln[columns.name]
 
-		assert(name, 'name ' .. columns.name .. ' does not exist' )
-		assert(length, 'length ' .. columns.name .. ' does not exist' )
+		assert(name, 'name ' .. columns.name .. ' from file ' .. fileName .. ' does not exist' )
+		assert(length, 'length ' .. columns.name .. ' from file ' .. fileName .. ' does not exist' )
 		-- Rows with non-numeric values in the 'len' column are skipped in the offset
 		-- calculation. These fields can signify a repeating field with the len equal
 		-- to the abbr of an already existing field signifying the number of repeats.
