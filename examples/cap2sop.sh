@@ -10,7 +10,7 @@ Options:
   -h	display this help text and exit
   -v	increase verbosity
 EOF
-  exit 1
+  exit 1 >&2
 }
 
 # By default redirect tshark's STDERR to /dev/null.
@@ -40,7 +40,7 @@ echo frame,dateTime,msgType,clientId,ethSrc,ethDst,ipSrc,ipDst,capFile
 until [[ -z $1 ]]
 do
 	if [[ ! -f $1 ]]; then
-		echo $1 is not a file > /dev/stderr
+		echo $1 is not a file > &2
 	fi
 
 	CAP_FILE=$1
