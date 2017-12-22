@@ -175,7 +175,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
 			if value == nil then
-				wsdh:warn('NUMERIC field ' .. self.name ..  ' with invalid value [' .. tvb(off, self:len()) .. ']. Could be a locale issue (floating point).')
+				wsdh:warn('NUMERIC field ' .. self.name ..  ' with invalid value [' .. tvb(off, self:len()):string() .. ']. Could be a locale issue (floating point).')
 				value = 0
 			end
 
