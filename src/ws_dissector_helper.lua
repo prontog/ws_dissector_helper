@@ -9,9 +9,24 @@ local wsdh = {
 	createAbbr = function(self, name)
 		return createAbbr(name)
 	end,
+	critical = function(self, ...)
+		critical('wsdh Error:', ...)
+	end,
+	warn = function(self, ...)
+		warn('wsdh Warn:', ...)
+	end,
+	message = function(self, ...)
+		message('wsdh Message:', ...)
+	end,
+	info = function(self, ...)
+		info('wsdh Info:', ...)
+	end,
+	debug = function(self, ...)
+		debug('wsdh Debug:', ...)
+	end,
 	trace = function(self, ...)
-		debug('wsdh Trace:', ...)
-	end
+		debug('wsdh trace:', ...)
+	end,
 }
 
 -- Field table will contain
@@ -89,7 +104,7 @@ function Field.FIXED(len, abbr, name, fixedValue, desc)
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
 			if value ~= self.fixedValue then
-				wsdh:trace('field ' .. self.name ..
+				wsdh:warn('field ' .. self.name ..
 						   ' has invalid fixed value [expected: ' ..
 						   self.fixedValue .. ', got: ' .. value .. ']')
 				return 0
@@ -160,7 +175,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
 			if value == nil then
-				wsdh:trace('NUMERIC field ' .. self.name ..  ' with nil value. Could be a locale issue (floating point).')
+				wsdh:warn('NUMERIC field ' .. self.name ..  ' with invalid value [' .. tvb(off, self:len()) .. ']. Could be a locale issue (floating point).')
 				value = 0
 			end
 
@@ -457,14 +472,29 @@ end
 
 local function createProtoHelper(proto)
 	assert(proto, 'proto cannot be nil')
-	math.randomseed(os.time())
 
 	wsdh = {
-		id = math.random(1000),
 		protocol = proto,
+		critical = function(self, ...)
+			critical(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. ' #' .. self.frame .. ' [critical]: ', ...)
+		end,
+		warn = function(self, ...)
+			warn(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [warn]:', ...)
+		end,
+		message = function(self, ...)
+			message(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [message]:', ...)
+		end,
+		info = function(self, ...)
+			info(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [info]:', ...)
+		end,
+		debug = function(self, ...)
+			debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [debug]:', ...)
+		end,
+		-- trace is for troubleshooting a dissector. It prints to debug console or stderr only if
+		-- it the trace preference is enabled. Note that it is very verbose.
 		trace = function(self, ...)
 			if self.protocol.prefs.trace then
-				debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. ' [' .. self.id .. ']:', ...)
+				debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [trace]:', ...)
 			end
 		end,
 		printMsgSpec = function(self, spec)
@@ -495,9 +525,8 @@ local function createProtoHelper(proto)
 		-- the parseFunction. Can handle TCP reassembly.
 		getDissector = function(self, parseFunction)
 			local dissector = function(buffer, pinfo, tree)
+				wsdh.frame = pinfo.number
 				local bytesConsumed = 0
-				self:trace('Processing Frame ' .. pinfo.number .. ' ...')
-
 				while (bytesConsumed < buffer:len()) do
 					local msgLength = parseFunction(buffer(bytesConsumed), pinfo, tree)
 					if msgLength > 0 then
@@ -505,10 +534,10 @@ local function createProtoHelper(proto)
 						bytesConsumed = bytesConsumed + msgLength
 					elseif msgLength == 0 then
 						if bytesConsumed > 0 then
-							self:trace('Frame: ' .. pinfo.number .. ' Parsing the message did not complete. Skipping the rest of the packet.')
+							self:warn('Frame: ' .. pinfo.number .. ' Parsing the message did not complete. Skipping the rest of the packet.')
 							return
 						else
-							self:trace('Frame: ' .. pinfo.number .. ' Nothing could be parsed. Skipping packet.')
+							self:warn('Frame: ' .. pinfo.number .. ' Nothing could be parsed. Skipping packet.')
 							return 0
 						end
 					else
@@ -609,9 +638,13 @@ local function createProtoHelper(proto)
 									   self.abbrPrefix,
 									   offset,
 									   sep)
-				self:printMsgSpec(specs[v.name])
+				if self.protocol.prefs.trace then
+					self:printMsgSpec(specs[v.name])
+				end
 				msgSpecs[v.name] = msgSpecToFieldSpec(v.name, v.name .. ' message', specs[v.name], header, trailer)
-				self:printFieldSpec(msgSpecs[v.name])
+				if self.protocol.prefs.trace then
+					self:printFieldSpec(msgSpecs[v.name])
+				end
 				msgParsers[v.name] = self:createParser(msgSpecs[v.name])
 			end
 

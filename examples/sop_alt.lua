@@ -1,5 +1,5 @@
 -- Wireshard Dissector for the Simple Order Protocol (sop). An imaginary
--- protocol. It uses the CSV specs that contain the header, payload and 
+-- protocol. It uses the CSV specs that contain the header, payload and
 -- trailer fields.
 --
 -- IMPORTANT: Add the following lines at the end of Wireshark's init.lua:
@@ -20,7 +20,7 @@ local defaultSettings = {
 local helper = wsdh.createProtoHelper(sop)
 helper:setDefaultPreference(defaultSettings)
 
-local msg_types = { { name = 'NO', file = 'NO_full.csv' }, 
+local msg_types = { { name = 'NO', file = 'NO_full.csv' },
 				    { name = 'OC', file = 'OC_full.csv' },
 					{ name = 'TR', file = 'TR_full.csv' },
 					{ name = 'RJ', file = 'RJ_full.csv' },
@@ -30,13 +30,13 @@ local msg_types = { { name = 'NO', file = 'NO_full.csv' },
 -- Define fields
 local SopFields = {
 	SOH = wsdh.Field.FIXED(1,'sop_alt.SOH', 'SOH', '\x01','Start of Header'),
-	LEN = wsdh.Field.NUMERIC(3,'sop_alt.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
+	LEN = wsdh.Field.NUMERIC(3,'sop_alt.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),
 	ETX = wsdh.Field.FIXED(1, 'sop_alt.ETX', 'ETX', '\x03','End of Message')
 }
-					
+
 -- Column mapping.
-local columns = { name = 'Field', 
-				  length = 'Length', 
+local columns = { name = 'Field',
+				  length = 'Length',
 				  type = 'Type',
 				  desc = 'Description' }
 
@@ -70,12 +70,12 @@ local function parseMessage(buffer, pinfo, tree)
 	-- Messages start with SOH.
 
 	if SopFields.SOH:value(buffer) ~= SopFields.SOH.fixedValue then
-		helper:trace('Frame: ' .. pinfo.number .. ' No SOH.')
+		helper:warn('No SOH.')
 		return 0
-	end	
+	end
 
 	-- Return missing message length in the case when the header is split
-	-- between packets.	
+	-- between packets.
 	if buffer:len() <= minBufferLen then
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
@@ -84,8 +84,7 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgType = buffer(header_len, msgTypeLen):string()
 	local msgSpec = msg_specs[msgType]
 	if not msgSpec then
-		helper:trace('Frame: ' .. pinfo.number .. 
-					 ' Unknown message type: ' .. msgType)
+		helper:warn('Unknown message type: ' .. msgType)
 		return 0
 	end
 
@@ -94,8 +93,7 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgLen = getMsgLen(buffer)
 	local msgDataLen = getMsgDataLen(buffer)
 	if buffer:len() < msgLen then
-		helper:trace('Frame: ' .. pinfo.number .. 
-					 ' buffer:len < msgLen')
+		helper:info('buffer:len < msgLen [' .. buffer:len() .. ' < ' .. msgLen .. ']')
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
 
@@ -103,21 +101,20 @@ local function parseMessage(buffer, pinfo, tree)
 	-- If no parser is found for this type of message, reject the whole
 	-- packet.
 	if not msgParse then
-		helper:trace('Frame: ' .. pinfo.number .. 
-					 ' Not supported message type: ' .. msgType)
+		helper:warn('Not supported message type: ' .. msgType)
 		return 0
 	end
-	
+
 	local bytesConsumed, subtree = msgParse(buffer, pinfo, tree, 0)
 	if bytesConsumed ~= 0 then
-	    subtree:append_text(', Type: ' .. msgType)	
+	    subtree:append_text(', Type: ' .. msgType)
 	    subtree:append_text(', Len: ' .. msgLen)
 
-	    pinfo.cols.protocol = sop.name	
+	    pinfo.cols.protocol = sop.name
 	else
-		protoHelper:trace('Frame: ' .. pinfo.number .. ' Parsing did not complete.')
+		protoHelper:warn('Parsing did not complete.')
 	end
-	
+
 	return bytesConsumed
 end
 
