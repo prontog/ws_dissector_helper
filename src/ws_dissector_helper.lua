@@ -526,31 +526,38 @@ local function createProtoHelper(proto)
 		getDissector = function(self, parseFunction)
 			local dissector = function(buffer, pinfo, tree)
 				wsdh.frame = pinfo.number
+
+				-- Ignore cut off packets
+				if buffer:len() ~= buffer:reported_len() then
+					self:warn('Frame length missmatch. buffer:len ~= buffer:reported_len [' .. buffer:len() .. ' ~= ' .. buffer:reported_len() .. ']')
+					return 0
+				end
+
 				local bytesConsumed = 0
 				while (bytesConsumed < buffer:len()) do
 					local msgLength = parseFunction(buffer(bytesConsumed), pinfo, tree)
 					if msgLength > 0 then
-						self:trace('Frame: ' .. pinfo.number .. ' Parsed message of size ' .. msgLength .. '.')
+						self:info('Parsed message of size ' .. msgLength .. '.')
 						bytesConsumed = bytesConsumed + msgLength
 					elseif msgLength == 0 then
 						if bytesConsumed > 0 then
-							self:warn('Frame: ' .. pinfo.number .. ' Parsing the message did not complete. Skipping the rest of the packet.')
+							self:warn('Parsing the message did not complete. Skipping the rest of the packet.')
 							return
 						else
-							self:warn('Frame: ' .. pinfo.number .. ' Nothing could be parsed. Skipping packet.')
+							self:warn('Nothing could be parsed. Skipping packet.')
 							return 0
 						end
 					else
-						self:trace('Frame: ' .. pinfo.number,
-							  'Incomplete message.',
-							  'bytesConsumed:' .. bytesConsumed,
-							  'missing:' .. msgLength)
+						-- Negative length is for the mising bytes. Invert to a
+						-- positive number and ask Wireshark for TCP reassembly.
+						msgLength = - msgLength
+						self:info('Incomplete message.', 'bytesConsumed:' .. bytesConsumed, 'missing:' .. msgLength)
+						self:info('buffer:len():' .. buffer:len() .. ' buffer:reported_len():' .. buffer:reported_len() .. ' buffer:reported_length_remaining():' .. buffer:reported_length_remaining())
 						-- we need more bytes, so set the desegment_offset to what we
 						-- already consumed, and the desegment_len to how many more
 						-- are needed
 						pinfo.desegment_offset = bytesConsumed
-						-- invert the negative result so it's a positive number
-						pinfo.desegment_len = - msgLength
+						pinfo.desegment_len = msgLength
 						return
 					end
 				end
