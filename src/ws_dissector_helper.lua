@@ -174,16 +174,19 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		end,
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
+			local valueLen = self:len()
+
 			if value == nil then
-				wsdh:warn('NUMERIC field ' .. self.name ..  ' with invalid value [' .. tvb(off, self:len()):string() .. ']. Could be a locale issue (floating point).')
+				wsdh:warn('NUMERIC field ' .. self.name ..  ' with invalid value [' .. tvb(off, valueLen):string() .. ']. Could be a locale issue (floating point).')
 				value = 0
+				valueLen = 0
 			end
 
 			local subTree = nil
 			if tree then
 				subTree = tree:add(self.proto, buf, value)
 			end
-			return self:len(), subTree
+			return valueLen, subTree
 		end
 	}
 end
@@ -330,6 +333,7 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 	assert(columns, 'columns cannot be nil')
 	assert(columns.name, 'columns.name cannot be nil')
 	assert(columns.length,'columns.length cannot be nil')
+	assert(columns.type,'columns.type cannot be nil')
 	abbrPrefix = abbrPrefix or ''
 	offset = offset or 0
 
@@ -339,9 +343,11 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 	for ln in f:lines() do
 		local length = ln[columns.length]
 		local name = ln[columns.name]
+		local type = ln[columns.type]
 
 		assert(name, 'name ' .. columns.name .. ' from file ' .. fileName .. ' does not exist' )
-		assert(length, 'length ' .. columns.name .. ' from file ' .. fileName .. ' does not exist' )
+		assert(length, 'length ' .. columns.length .. ' from file ' .. fileName .. ' does not exist' )
+		assert(type, 'type ' .. columns.type .. ' from file ' .. fileName .. ' does not exist' )
 		-- Rows with non-numeric values in the 'len' column are skipped in the offset
 		-- calculation. These fields can signify a repeating field with the len equal
 		-- to the abbr of an already existing field signifying the number of repeats.
@@ -349,7 +355,7 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 			length = createAbbr(abbrPrefix .. length)
 		end
 
-		local fieldType = string.upper(ln[columns.type])
+		local fieldType = string.upper(type)
 		if not Field[fieldType] then
 			fieldType = 'STRING'
 		end
@@ -476,25 +482,25 @@ local function createProtoHelper(proto)
 	wsdh = {
 		protocol = proto,
 		critical = function(self, ...)
-			critical(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. ' #' .. self.frame .. ' [critical]: ', ...)
+			critical(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. ' #' .. tostring(self.frame) .. ' [critical]: ', ...)
 		end,
 		warn = function(self, ...)
-			warn(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [warn]:', ...)
+			warn(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [warn]:', ...)
 		end,
 		message = function(self, ...)
-			message(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [message]:', ...)
+			message(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [message]:', ...)
 		end,
 		info = function(self, ...)
-			info(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [info]:', ...)
+			info(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [info]:', ...)
 		end,
 		debug = function(self, ...)
-			debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [debug]:', ...)
+			debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [debug]:', ...)
 		end,
 		-- trace is for troubleshooting a dissector. It prints to debug console or stderr only if
 		-- it the trace preference is enabled. Note that it is very verbose.
 		trace = function(self, ...)
 			if self.protocol.prefs.trace then
-				debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. self.frame .. ' [trace]:', ...)
+				debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [trace]:', ...)
 			end
 		end,
 		printMsgSpec = function(self, spec)
@@ -535,6 +541,7 @@ local function createProtoHelper(proto)
 
 				local bytesConsumed = 0
 				while (bytesConsumed < buffer:len()) do
+					self:trace(buffer(bytesConsumed):string())
 					local msgLength = parseFunction(buffer(bytesConsumed), pinfo, tree)
 					if msgLength > 0 then
 						self:info('Parsed message of size ' .. msgLength .. '.')
@@ -552,10 +559,10 @@ local function createProtoHelper(proto)
 						-- positive number and ask Wireshark for TCP reassembly.
 						msgLength = - msgLength
 						self:info('Incomplete message.', 'bytesConsumed:' .. bytesConsumed, 'missing:' .. msgLength)
-						self:info('buffer:len():' .. buffer:len() .. ' buffer:reported_len():' .. buffer:reported_len() .. ' buffer:reported_length_remaining():' .. buffer:reported_length_remaining())
 						-- we need more bytes, so set the desegment_offset to what we
 						-- already consumed, and the desegment_len to how many more
 						-- are needed
+						pinfo.can_desegment = 2
 						pinfo.desegment_offset = bytesConsumed
 						pinfo.desegment_len = msgLength
 						return
