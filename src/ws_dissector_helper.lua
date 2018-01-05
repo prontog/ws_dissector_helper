@@ -149,13 +149,17 @@ function Field.STRING(len, abbr, name, desc, offset, optional)
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
 			local valueLen = self:len()
+			local subTree = nil
 
 			if value == nil then
 				value = 0
 				valueLen = 0
+
+				if self.optional then
+					return valueLen, subTree
+				end
 			end
 
-			local subTree = nil
 			if tree then
 				subTree = tree:add(self.proto, buf, value)
 			end
@@ -282,7 +286,7 @@ function Field.COMPOSITE(fields)
 			local addedBytes = 0
 			for _, field in ipairs(fields) do
 				local fieldLen = field:add_to(subTree, tvb, off + addedBytes)
-				if fieldLen == 0 then
+				if fieldLen == 0 and not field.optional then
 					return 0
 				end
 				addedBytes = addedBytes + fieldLen
