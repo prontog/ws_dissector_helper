@@ -26,6 +26,7 @@ VARLEN | `ftypes.STRING` | A string of variable length | The length of the field
 COMPOSITE | | A field containing other fields | Composite fields are visualized with a subtree in the *Packet Details* pane. This type cannot be specified in a CSV file. Use the `Field.COMPOSITE` function instead to create one dynamically. Useful for header/trailer fields. **Note** that only fixed length fields are allowed inside a composite.
 REPEATING | | A repeating group | These are composite fields that are repeated. The number of repeats is taken by another field. The end of the repeating group is either the last field or a field of type `REPEATING-END`.
 REPEATING-END | | The end of a repeating group | Marks the end of a repeating group.
+OPTIONAL | `ftypes.STRING` | An optional fixed length string | Only valid as the last field of a message or the last field before the message trailer.
 
 ### Dissector preferences
 
@@ -78,7 +79,7 @@ helper:setDefaultPreference(defaultSettings)
 
 Define the protocol's message types. Each message type has a *name* and *file* property. The file property is the filename of the CSV file that contains the specification of the fields for the message type. Note that the CSV files should be located in *SOP_SPECS_PATH*.
 ```lua
-local msg_types = { { name = 'NO', file = 'NO.csv' }, 
+local msg_types = { { name = 'NO', file = 'NO.csv' },
 				    { name = 'OC', file = 'OC.csv' },
 					{ name = 'TR', file = 'TR.csv' },
 					{ name = 'RJ', file = 'RJ.csv' } }
@@ -88,7 +89,7 @@ Define fields for the header and trailer. If your CSV files contain all the mess
 ```lua
 local SopFields = {
 	SOH = wsdh.Field.FIXED(1,'sop.header.SOH', 'SOH', '\x01','Start of Header'),
-	LEN = wsdh.Field.NUMERIC(3,'sop.header.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),	
+	LEN = wsdh.Field.NUMERIC(3,'sop.header.LEN', 'LEN','Length of the payload (i.e. no header/trailer)'),
 	ETX = wsdh.Field.FIXED(1, 'sop.trailer.ETX', 'ETX', '\x03','End of Message')
 }
 ```
@@ -102,7 +103,7 @@ local header = wsdh.Field.COMPOSITE{
 }
 
 local trailer = wsdh.Field.COMPOSITE{
-	title = 'Trailer',	
+	title = 'Trailer',
 	SopFields.ETX
 }
 ```
@@ -112,8 +113,8 @@ Now let's load the specs using the `loadSpecs` function of the `helper` object. 
 1. msgTypes		this is a table of message types. Each type has two properties: name and file.
 1. dir			the directory were the CSV files are located
 1. columns is a table with the mapping of columns:
-	- name is the name of the field name column. 
-	- length is the name of the field legth column. 
+	- name is the name of the field name column.
+	- length is the name of the field legth column.
 	- type is the name of the field type column. Optional. Defaults to STRING.
 	- desc is the name of the field description column. Optional.
 1. offset		the starting value for the offset column. Optional. Defaults to 0.
@@ -125,8 +126,8 @@ The function returns two tables. One containing the message specs and another co
 
 ```lua
 -- Column mapping. As described above.
-local columns = { name = 'Field', 
-				  length = 'Length', 
+local columns = { name = 'Field',
+				  length = 'Length',
 				  type = 'Type',
 				  desc = 'Description' }
 
@@ -142,7 +143,7 @@ local msg_specs, msg_parsers = helper:loadSpecs(msg_types,
 Now let's create a few helper functions that will simplify the main parse function.
 
 ```lua
--- Returns the length of the message from the end of header up to the start 
+-- Returns the length of the message from the end of header up to the start
 -- of trailer.
 local function getMsgDataLen(msgBuffer)
 	return helper:getHeaderValue(msgBuffer, SopFields.LEN)
@@ -150,8 +151,8 @@ end
 
 -- Returns the length of whole the message. Includes header and trailer.
 local function getMsgLen(msgBuffer)
-	return header:len() + 
-		   getMsgDataLen(msgBuffer) + 
+	return header:len() +
+		   getMsgDataLen(msgBuffer) +
 		   trailer:len()
 end
 ```
@@ -168,10 +169,10 @@ local function parseMessage(buffer, pinfo, tree)
 	if SopFields.SOH:value(buffer) ~= SopFields.SOH.fixedValue then
 		helper:trace('Frame: ' .. pinfo.number .. ' No SOH.')
 		return 0
-	end	
+	end
 
-	-- Return missing message length in the case when the header is split 
-	-- between packets.	
+	-- Return missing message length in the case when the header is split
+	-- between packets.
 	if buffer:len() <= minBufferLen then
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
@@ -180,50 +181,50 @@ local function parseMessage(buffer, pinfo, tree)
 	local msgType = buffer(header:len(), msgTypeLen):string()
 	local msgSpec = msg_specs[msgType]
 	if not msgSpec then
-		helper:trace('Frame: ' .. pinfo.number .. 
+		helper:trace('Frame: ' .. pinfo.number ..
 					 ' Unknown message type: ' .. msgType)
 		return 0
 	end
 
-	-- Return missing message length in the case when the data is split 
+	-- Return missing message length in the case when the data is split
 	-- between packets.
 	local msgLen = getMsgLen(buffer)
 	local msgDataLen = getMsgDataLen(buffer)
 	if buffer:len() < msgLen then
-		helper:trace('Frame: ' .. pinfo.number .. 
+		helper:trace('Frame: ' .. pinfo.number ..
 					 ' buffer:len < msgLen')
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
 
 	local msgParse = msg_parsers[msgType]
-	-- If no parser is found for this type of message, reject the whole 
+	-- If no parser is found for this type of message, reject the whole
 	-- packet.
 	if not msgParse then
-		helper:trace('Frame: ' .. pinfo.number .. 
+		helper:trace('Frame: ' .. pinfo.number ..
 					 ' Not supported message type: ' .. msgType)
 		return 0
 	end
-	
+
 	local bytesConsumed, subtree = msgParse(buffer, pinfo, tree, 0)
 	if bytesConsumed ~= 0 then
-	    subtree:append_text(', Type: ' .. msgType)	
+	    subtree:append_text(', Type: ' .. msgType)
 	    subtree:append_text(', Len: ' .. msgLen)
 
-	    pinfo.cols.protocol = sop.name	
+	    pinfo.cols.protocol = sop.name
 	else
 		protoHelper:trace('Frame: ' .. pinfo.number .. ' Parsing did not complete.')
 	end
-	
+
 	return bytesConsumed
 end
 ```
 
-Now that the parse function for the SOP protocol is ready, we need to create the dissector function using the `getDissector` helper function which returns a dissector function containing the basic while loop that pretty much all dissectors need to have. 
+Now that the parse function for the SOP protocol is ready, we need to create the dissector function using the `getDissector` helper function which returns a dissector function containing the basic while loop that pretty much all dissectors need to have.
 ```lua
 sop.dissector = helper:getDissector(parseMessage)
 ```
 
-Finally enable the dissector. `enableDissector` registers the ports to the TCP dissector table. 
+Finally enable the dissector. `enableDissector` registers the ports to the TCP dissector table.
 ```lua
 helper:enableDissector()
 ```
