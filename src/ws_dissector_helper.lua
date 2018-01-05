@@ -82,13 +82,15 @@ local function createProtoField(abbr, name, desc, len, type)
 	return protoField
 end
 
-function Field.FIXED(len, abbr, name, fixedValue, desc)
+function Field.FIXED(len, abbr, name, fixedValue, desc, offset)
+	assert(fixedValue, 'fixedValue cannot be nil')
 	return {
 		proto = createProtoField(abbr, name, desc, len),
 		type = 'FIXED',
 		len = function()
 			return len
 		end,
+		offset = offset,
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
@@ -119,7 +121,7 @@ function Field.FIXED(len, abbr, name, fixedValue, desc)
 	}
 end
 
-function Field.STRING(len, abbr, name, desc, offset)
+function Field.STRING(len, abbr, name, desc, offset, optional)
 	return {
 		proto = createProtoField(abbr, name, desc, len),
 		type = 'STRING',
@@ -129,9 +131,14 @@ function Field.STRING(len, abbr, name, desc, offset)
 		offset = offset,
 		abbr = abbr,
 		name = name,
+		optional = optional or false,
 		value = function(self, tvb, off)
 			wsdh:trace('Getting value of field ' .. self.name)
-			off = off or offset
+			off = off or self.offset
+			if off + self:len() > tvb:len() then
+				return nil, nil
+			end
+
 			local buf = tvb(off, self:len())
 			return buf:string(), buf
 		end,
@@ -141,15 +148,25 @@ function Field.STRING(len, abbr, name, desc, offset)
 		end,
 		add_to = function(self, tree, tvb, off)
 			local value, buf = self:value(tvb, off)
+			local valueLen = self:len()
+
+			if value == nil then
+				value = 0
+				valueLen = 0
+			end
 
 			local subTree = nil
 			if tree then
 				subTree = tree:add(self.proto, buf, value)
 			end
 
-			return self:len(), subTree
+			return valueLen, subTree
 		end
 	}
+end
+
+function Field.OPTIONAL(len, abbr, name, desc, offset)
+	return Field.STRING(len, abbr, name, desc, offset, true)
 end
 
 function Field.NUMERIC(len, abbr, name, desc, offset)
@@ -164,7 +181,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		name = name,
 		value = function(self, tvb, off)
 			wsdh:trace('Getting value of field ' .. self.name)
-			off = off or offset
+			off = off or self.offset
 			local buf = tvb(off, self:len())
 			return tonumber(buf:string()), buf
 		end,
@@ -205,7 +222,7 @@ function Field.VARLEN(lenField, abbr, name, desc, offset)
 		name = name,
 		value = function(self, tvb, off)
 			wsdh:trace('Getting value of field ' .. self.name)
-			off = off or offset
+			off = off or self.offset
 			local buf = tvb(off, self:len(tvb))
 			return buf:string(), buf
 		end,
@@ -315,11 +332,13 @@ Field['REPEATING-END'] = 'dummy'
 	Read a message spec from a CSV file.
 
 	filename is the name of the CSV file.
-	columns is a table with the mapping of columns:
-		name is the name of the field name column.
-		length is the name of the field length column.
-		type is the name of the field type column. Optional. Defaults to STRING.
-		desc is the name of the field description column. Optional.
+	columns is a table with the following keys:
+		name    the column containng the field name.
+		length  the column containng the field length.
+		type    the column containng the field type. Optional. Defaults to STRING.
+		desc    the column containng the field description. Optional.
+		other   the column containng the othe field information. Optional. Can
+		        be used with Field.FIXED to pass the FIXED value.
 	abbrPrefix is the prefix for the abbr column, which is simply the name with
 		any	spaces and non-printable characters removed. Optional. Defaults to ''.
 	offset is the starting value for the offset column. Optional. Defaults to 0.
@@ -333,7 +352,6 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 	assert(columns, 'columns cannot be nil')
 	assert(columns.name, 'columns.name cannot be nil')
 	assert(columns.length,'columns.length cannot be nil')
-	assert(columns.type,'columns.type cannot be nil')
 	abbrPrefix = abbrPrefix or ''
 	offset = offset or 0
 
@@ -343,11 +361,10 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 	for ln in f:lines() do
 		local length = ln[columns.length]
 		local name = ln[columns.name]
-		local type = ln[columns.type]
+		local type = ln[columns.type] or ""
 
 		assert(name, 'name ' .. columns.name .. ' from file ' .. fileName .. ' does not exist' )
 		assert(length, 'length ' .. columns.length .. ' from file ' .. fileName .. ' does not exist' )
-		assert(type, 'type ' .. columns.type .. ' from file ' .. fileName .. ' does not exist' )
 		-- Rows with non-numeric values in the 'len' column are skipped in the offset
 		-- calculation. These fields can signify a repeating field with the len equal
 		-- to the abbr of an already existing field signifying the number of repeats.
@@ -361,13 +378,15 @@ local function readMsgSpec(fileName, columns, abbrPrefix, offset, sep)
 		end
 
 		local desc = ln[columns.desc]
+		local other = ln[columns.other]
 
 		spec[i] = { name = name,
 					abbr = createAbbr(abbrPrefix .. name),
 					len = length,
 					offset = offset,
 					type = fieldType,
-					desc = desc	}
+					desc = desc,
+					other =  other}
 
 		-- Again length can be string. See previous comment.
 		if tonumber(length) then
@@ -394,6 +413,8 @@ local function createSimpleField(spec)
 
 	if spec.type == 'NUMERIC' then
 		newField = Field.NUMERIC(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
+	elseif spec.type == 'FIXED' then
+		newField = Field.FIXED(spec.len, spec.abbr, spec.name, spec.other, spec.desc)
 	else
 		newField = Field.STRING(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
 	end
@@ -402,8 +423,8 @@ local function createSimpleField(spec)
 end
 
 -- Converts a spec to Field.XXXX. id is the message type/id. description is a text field
--- describing the message type. spec must be of the same format as the output
--- of readSpec. header is a Field to be added before the fields found in spec.
+-- describing the message type. msgSpec must be of the same format as the output
+-- of readMsgSpec. header is a Field to be added before the fields found in spec.
 -- trailer is a Field to be added after the fields found in spec.
 local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 	assert(id, 'id cannot be nil')
@@ -446,6 +467,14 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 													   f.name,
 													   f.desc,
 													   f.offset)
+	   elseif f.type == 'OPTIONAL' then
+		   assert(i == #msgSpec, 'Invalid optional field ' .. f.name .. ' in message ' .. id .. '. Optional fields are only allowed at the end of a message.')
+
+		   bodyFields[#bodyFields + 1] = Field.OPTIONAL(f.len,
+													    f.abbr,
+													    f.name,
+													    f.desc,
+													    f.offset)
 		else -- Everything else is a simple type
 			bodyFields[#bodyFields + 1] = createSimpleField(f)
 		end
@@ -610,7 +639,7 @@ local function createProtoHelper(proto)
 				for i, field in ipairs(fieldsSpec) do
 					self:trace('Validating field ' .. field.name)
 					local fieldLen = field:add_to(nil, buf, bytesValidated)
-					if fieldLen == 0 then
+					if fieldLen == 0 and not field.optional then
 						-- Return without adding anything to the tree.
 						self:trace('field ' .. field.name .. ' is not valid.')
 						return 0
@@ -628,7 +657,7 @@ local function createProtoHelper(proto)
 					if field.type then
 						self:trace('Adding field ' .. field.name)
 						local fieldLen = field:add_to(subtree, buf, bytesConsumed)
-						if fieldLen == 0 then
+						if fieldLen == 0 and not field.optional then
 							self:trace('field ' .. field.name .. ' is empty.')
 							return 0
 						end
