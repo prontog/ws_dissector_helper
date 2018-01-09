@@ -7,7 +7,7 @@
 -- SOP_SPECS_PATH='path to the directory of the CSV specs'
 -- dofile('path to this file')
 --
-local wsdh = dofile(WSDH_SCRIPT_PATH .. 'ws_dissector_helper.lua')
+local wsdh = dofile(WSDH_SCRIPT_PATH .. '/ws_dissector_helper.lua')
 
 local sop = Proto('SOP', 'Simple Order Protocol')
 -- a table of our default settings - these can be changed by changing
@@ -61,14 +61,17 @@ local msg_specs, msg_parsers = helper:loadSpecs(msg_types,
 -- Returns the length of the message from the end of header up to the start
 -- of trailer.
 local function getMsgDataLen(msgBuffer)
-	return helper:getHeaderValue(msgBuffer, SopFields.LEN)
+	return tonumber(helper:getHeaderValue(msgBuffer, SopFields.LEN))
 end
 
 -- Returns the length of whole the message. Includes header and trailer.
 local function getMsgLen(msgBuffer)
-	return header:len() +
-		   getMsgDataLen(msgBuffer) +
-		   trailer:len()
+	local msgdataLen = getMsgDataLen(msgBuffer)
+	if msgdataLen == nil then
+		return nil
+	end
+
+	return header:len() + msgdataLen + trailer:len()
 end
 
 -- Parse a specific type of message from a buffer and add it to the tree.
@@ -116,14 +119,12 @@ local function parseMessage(buffer, pinfo, tree)
 	end
 
 	local bytesConsumed, subtree = msgParse(buffer, pinfo, tree, 0)
-    if bytesConsumed ~= 0 then
+    if bytesConsumed > 0 then
     	subtree:append_text(', Type: ' .. msgType)
     	subtree:append_text(', Len: ' .. msgLen)
 
     	pinfo.cols.protocol = sop.name
-	else
-		protoHelper:warn('Parsing did not complete.')
-	end
+    end
 
 	return bytesConsumed
 end
