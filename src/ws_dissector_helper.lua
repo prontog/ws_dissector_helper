@@ -418,7 +418,7 @@ local function createSimpleField(spec)
 	if spec.type == 'NUMERIC' then
 		newField = Field.NUMERIC(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
 	elseif spec.type == 'FIXED' then
-		newField = Field.FIXED(spec.len, spec.abbr, spec.name, spec.other, spec.desc)
+		newField = Field.FIXED(spec.len, spec.abbr, spec.name, spec.other, spec.desc, spec.offset)
 	else
 		newField = Field.STRING(spec.len, spec.abbr, spec.name, spec.desc, spec.offset)
 	end
