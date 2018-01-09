@@ -1,10 +1,10 @@
-Field,Length,Type
-SOH,1,
-LEN,3,NUMERIC
-msgType,2,
-tradeId,6,
-orderid,6,
-volume,7,NUMERIC
-symbol,12,
-price,8,NUMERIC
-ETX,1,
+Field,Length,Type,Description,Other
+SOH,1,FIXED,Start of Header,
+LEN,3,NUMERIC,Length of the payload (i.e. no header/trailer),
+msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD,
+tradeId,6,,Unique identifier for Trade as assigned by the exchange,
+orderid,6,,Unique identifier for Order as assigned by the exchange,
+volume,7,NUMERIC,Number of shares,
+symbol,12,,Ticker symbol,
+price,8,NUMERIC,Price per unit of quantity (e.g. per share),
+ETX,1,FIXED,End of Message,

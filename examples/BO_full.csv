@@ -1,15 +1,15 @@
-Field,Length,Type
-SOH,1,
-LEN,3,NUMERIC
-MsgType,2,
-Symbol,12,
-Number of levels,1,NUMERIC
-Levels,Number of levels,REPEATING
-Bid Volume,7,NUMERIC
-Bid Price,8,NUMERIC
-Bid Orders,5,NUMERIC
-Offer Volume,7,NUMERIC
-Offer Price,8,NUMERIC
-Offer Orders,5,NUMERIC
-,,REPEATING-END
-ETX,1,
+Field,Length,Type,Description,Other
+SOH,1,FIXED,Start of Header,
+LEN,3,NUMERIC,Length of the payload (i.e. no header/trailer),
+MsgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD,
+Symbol,12,,Ticker symbol,
+Number of levels,1,NUMERIC,Number of BBO levels,
+Levels,Number of levels,REPEATING,Start of Levels REPEATING field,
+Bid Volume,7,NUMERIC,Bid number of shares,
+Bid Price,8,NUMERIC,Bid price per unit of quantity (e.g. per share),
+Bid Orders,5,NUMERIC,Bid number of orders,
+Offer Volume,7,NUMERIC,Offer number of shares,
+Offer Price,8,NUMERIC,Offer price per unit of quantity (e.g. per share),
+Offer Orders,5,NUMERIC,Offer number of orders,
+,,REPEATING-END,End of Levels REPEATING field,
+ETX,1,FIXED,End of Message,

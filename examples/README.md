@@ -37,7 +37,7 @@ Dissector
 You will find two dissectors for SOP:
 
 - [sop.lua](sop.lua) uses the payload CSV files and dynamically creates the header and trailer parts.
-- [sop_alt.lua](sop_alt.lua) uses the full CSV files. There are no header and trailer COMPOSITE field. All fields are visualized in the same tree in the *Packet Details* pane.
+- [sop_alt.lua](sop_alt.lua) uses the full CSV files. There are no header and trailer COMPOSITE fields. All fields are visualized in the same tree in the *Packet Details* pane. Have a look at the \*_full.csv files for an example on how to use the FIXED and REPEATING-END fields.
 
 Installation
 ------------

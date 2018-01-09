@@ -1,8 +1,8 @@
-Field,Length,Type
-SOH,1,
-LEN,3,NUMERIC
-msgType,2,
-textLen,4,
-text,textLen,VARLEN
-source,16,
-ETX,1,
+Field,Length,Type,Description,Other
+SOH,1,FIXED,Start of Header,
+LEN,3,NUMERIC,Length of the payload (i.e. no header/trailer),
+msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD,
+textLen,4,,Length of text field,
+text,textLen,VARLEN,Free format text string,
+source,16,,Source of the news,
+ETX,1,FIXED,End of Message,

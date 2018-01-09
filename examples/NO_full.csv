@@ -1,12 +1,12 @@
-Field,Length,Type
-SOH,1,
-LEN,3,NUMERIC
-msgType,2,
-side,1,
-type,3,
-volume,7,NUMERIC
-symbol,12,
-price,8,NUMERIC
-clientId,16,
-accountId,16,
-ETX,1,
+Field,Length,Type,Description,Other
+SOH,1,FIXED,Start of Header,
+LEN,3,NUMERIC,Length of the payload (i.e. no header/trailer),
+msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD,
+side,1,,"Side of order. B for buy, S for sell.",
+type,3,,"Order type. LMT for limit, MKT for market.",
+volume,7,NUMERIC,Number of shares,
+symbol,12,,Ticker symbol,
+price,8,NUMERIC,Price per unit of quantity (e.g. per share),
+clientId,16,,Unique identifier for Order as assigned by the client,
+accountId,16,,Identifier for the account to be used for clearance,
+ETX,1,FIXED,End of Message,

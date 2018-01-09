@@ -1,8 +1,8 @@
-Field,Length,Type,Description
-SOH,1,
-LEN,3,NUMERIC
-msgType,2,,"Message type"
-clientId,16,,"Client Id"
-rejectionCode,3,NUMERIC,"Rejection Code"
-text,48,,"Text explaining the rejection"
-ETX,1,
+Field,Length,Type,Description,Other
+SOH,1,FIXED,Start of Header,
+LEN,3,NUMERIC,Length of the payload (i.e. no header/trailer),
+msgType,2,,Defines message type ALWAYS FIRST FIELD IN MESSAGE PAYLOAD,
+clientId,16,,Unique identifier for Order as assigned by the client,
+rejectionCode,3,NUMERIC,Rejection Code,
+text,48,,Text explaining the rejection,
+ETX,1,FIXED,End of Message,
