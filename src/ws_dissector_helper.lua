@@ -595,7 +595,6 @@ local function createProtoHelper(proto)
 						-- we need more bytes, so set the desegment_offset to what we
 						-- already consumed, and the desegment_len to how many more
 						-- are needed
-						pinfo.can_desegment = 2
 						pinfo.desegment_offset = bytesConsumed
 						pinfo.desegment_len = msgLength
 						return
