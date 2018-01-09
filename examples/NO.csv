@@ -6,4 +6,4 @@ volume,7,NUMERIC,Number of shares.
 symbol,12,,Ticker symbol.
 price,8,NUMERIC,Price per unit of quantity (e.g. per share)
 clientId,16,,Unique identifier for Order as assigned by the client.
-accountId,16,,Identifier for the account of be used for clearance.
+accountId,16,,Identifier for the account to be used for clearance.
