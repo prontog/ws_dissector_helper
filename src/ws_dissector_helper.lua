@@ -255,15 +255,32 @@ function Field.COMPOSITE(fields)
 		title = fields.title,
 		name = fields.title,
 		len = function(self)
-			local length = 0
+			-- Because of OPTIONAL fields, there is no way to know the length of
+			-- a COMPOSITE before parsing. So if a field is OPTIONAL, return two
+			-- two lengths, the required and the optional (includes the
+			-- required).
+			local requiredLength = 0
+			local optionalLength = 0
 			for _, field in ipairs(fields) do
-				length = length + field:len()
+				if not field.optional then
+					requiredLength = requiredLength + field:len()
+				else
+					optionalLength = requiredLength + field:len()
+				end
 			end
-			return length
+			return requiredLength, optionalLength
 		end,
 		value = function(self, tvb, off)
 			wsdh:trace('Getting value of field ' .. self.name)
-			return fields.title, tvb(off)
+			-- Note that field_len is only the required fields. If there is an
+			-- OPTIONAL field at the end of the COMPOSITE, it cannot be handled
+			-- and the returned value will not include it.
+			local fieldLen, optionalLen = self:len()
+			if off + optionalLen<= tvb:len() then
+				fieldLen = optionalLen
+			end
+
+			return tvb(off, fieldLen):string(), tvb(off, fieldLen)
 		end,
 		getOffset = function(self, abbr1)
 			local offset = 0;
