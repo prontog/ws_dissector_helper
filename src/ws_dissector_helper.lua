@@ -259,16 +259,16 @@ function Field.COMPOSITE(fields)
 			-- a COMPOSITE before parsing. So if a field is OPTIONAL, return two
 			-- two lengths, the required and the optional (includes the
 			-- required).
-			local requiredLength = 0
-			local optionalLength = 0
-			for _, field in ipairs(fields) do
-				if not field.optional then
-					requiredLength = requiredLength + field:len()
+			local requiredLen = 0
+			local optionalLen = 0
+			for _, field in ipairs(self.fields) do
+				if field.optional then
+					optionalLen = field:len()
 				else
-					optionalLength = requiredLength + field:len()
+					requiredLen = requiredLen + field:len()
 				end
 			end
-			return requiredLength, optionalLength
+			return requiredLen, requiredLen + optionalLen
 		end,
 		value = function(self, tvb, off)
 			wsdh:trace('Getting value of field ' .. self.name)
@@ -276,15 +276,14 @@ function Field.COMPOSITE(fields)
 			-- OPTIONAL field at the end of the COMPOSITE, it cannot be handled
 			-- and the returned value will not include it.
 			local fieldLen, optionalLen = self:len()
-			if off + optionalLen<= tvb:len() then
+			if off + optionalLen <= tvb:len() then
 				fieldLen = optionalLen
 			end
-
 			return tvb(off, fieldLen):string(), tvb(off, fieldLen)
 		end,
 		getOffset = function(self, abbr1)
 			local offset = 0;
-			for _, field in ipairs(fields) do
+			for _, field in ipairs(self.fields) do
 				if field.abbr == abbr1 then
 					return offset
 				else
@@ -302,7 +301,7 @@ function Field.COMPOSITE(fields)
 			end
 
 			local addedBytes = 0
-			for _, field in ipairs(fields) do
+			for _, field in ipairs(self.fields) do
 				local fieldLen = field:add_to(subTree, tvb, off + addedBytes)
 				if fieldLen == 0 and not field.optional then
 					return 0
