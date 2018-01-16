@@ -302,6 +302,12 @@ function Field.COMPOSITE(fields)
 end
 
 function Field.REPEATING(repeatsField, compositeField)
+	-- Make sure no OPTIONAL field is in the REPEATING group.
+	for _, field in ipairs(repeatsField) do
+		assert(not field.optional, 'Invalid optional field ' .. field.name ..
+		       ' in REPEATING field ' .. compositeField.title ..
+			   '. Optional fields are only allowed at the end of a message.')
+	end
 	return {
 		type = 'REPEATING',
 		repeatsField = repeatsField,
