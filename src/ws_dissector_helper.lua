@@ -4,6 +4,7 @@ local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 -- Inspired by the Athena dissector by FlavioJS.
 -------------------------------------------------
 
+local WSDH_VERSION = 0.3
 -- This object will be updated by the createProtoHelper function.
 local wsdh = {
 	createAbbr = function(self, name)
@@ -509,10 +510,16 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 	return msgFields
 end
 
-local function createProtoHelper(proto)
+--[[
+	Creates ws_dissector_helper for a protocol.
+		proto is the Wireshark Proto
+		version is the version of the protocol version (optional)
+--]]
+local function createProtoHelper(proto, version)
 	assert(proto, 'proto cannot be nil')
 
 	wsdh = {
+		version = version,
 		protocol = proto,
 		critical = function(self, ...)
 			critical(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. ' #' .. tostring(self.frame) .. ' [critical]: ', ...)
@@ -625,7 +632,13 @@ local function createProtoHelper(proto)
 											  65535)
 			self.protocol.prefs.trace = Pref.bool('Trace',
 											 defaultPrefs.trace,
-											 'Enable trace messages.')
+											 'Enable trace messages. Useful for troubleshooting a dissector.')
+
+	        if self.version then
+				self.protocol.prefs.version = Pref.statictext('Protocol version: ' .. self.version)
+			end
+
+		    self.protocol.prefs.info = Pref.statictext('Powered by ws_dissector_helper v' .. WSDH_VERSION .. ' https://github.com/prontog/ws_dissector_helper')
 
 			self.protocol.prefs_changed = function()
 				self:disableDissector()

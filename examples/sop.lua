@@ -16,7 +16,8 @@ local defaultSettings = {
 	ports = '9001-9010',
 	trace = false
 }
-local helper = wsdh.createProtoHelper(sop)
+local SOP_VERSION = 2.0
+local helper = wsdh.createProtoHelper(sop, SOP_VERSION)
 helper:setDefaultPreference(defaultSettings)
 
 local msg_types = { { name = 'NO', file = 'NO.csv' },
