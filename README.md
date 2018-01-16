@@ -26,7 +26,7 @@ VARLEN | `ftypes.STRING` | A string of variable length | The length of the field
 COMPOSITE | | A field containing other fields | Composite fields are visualized with a subtree in the *Packet Details* pane. This type cannot be specified in a CSV file. Use the `Field.COMPOSITE` function instead to create one dynamically. Useful for header/trailer fields. **Note** that only fixed length fields are allowed inside a composite.
 REPEATING | | A repeating group | These are composite fields that are repeated. The number of repeats is taken by another field. The end of the repeating group is either the last field or a field of type `REPEATING-END`.
 REPEATING-END | | The end of a repeating group | Marks the end of a repeating group.
-OPTIONAL | `ftypes.STRING` | An optional fixed length string | Only valid as the last field of a message or the last field before the message trailer.
+OPTIONAL | `ftypes.STRING` | An optional fixed length string | Only valid as the last field of a message or the last field before the message trailer. Not recommended fro TCP segments with multiple messages.
 
 ### Dissector preferences
 
