@@ -318,6 +318,8 @@ function Field.COMPOSITE(fields)
 end
 
 function Field.REPEATING(repeatsField, compositeField)
+	assert(repeatsField, 'repeatsField cannot be nil')
+	assert(compositeField, 'compositeField cannot be nil')
 	-- Make sure no OPTIONAL field is in the REPEATING group.
 	for _, field in ipairs(repeatsField) do
 		assert(not field.optional, 'Invalid optional field ' .. field.name ..
@@ -334,7 +336,11 @@ function Field.REPEATING(repeatsField, compositeField)
 			return self.composite:len()
 		end,
 		add_to = function(self, tree, tvb, off)
-			local repeats = self.repeatsField:valueSingle(tvb)
+			local repeats = tonumber(self.repeatsField:valueSingle(tvb))
+			if repeats == nil then
+				wsdh:trace('repeatsField is not a number [' .. tostring(repeats) .. ']')
+				return 0
+			end
 			local addedBytes = 0
 			for i = 1, repeats do
 				local fieldLen, subTree = self.composite:add_to(tree, tvb, off + addedBytes)
@@ -449,7 +455,9 @@ local function createSimpleField(spec)
 	return newField
 end
 
--- Converts a spec to Field.XXXX. id is the message type/id. description is a text field
+-- Converts a spec to Field.XXXX.
+--
+-- id is the message type/id. description is a text field
 -- describing the message type. msgSpec must be of the same format as the output
 -- of readMsgSpec. header is a Field to be added before the fields found in spec.
 -- trailer is a Field to be added after the fields found in spec.
@@ -768,5 +776,6 @@ return {
 	Field = Field,
 	readMsgSpec = readMsgSpec,
 	msgSpecToFieldSpec = msgSpecToFieldSpec,
-	createProtoHelper = createProtoHelper
+	createProtoHelper = createProtoHelper,
+	createSimpleField = createSimpleField
 }
