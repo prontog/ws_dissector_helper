@@ -8,12 +8,13 @@ Extract SOP message information from CAP_FILEs.
 
 Options:
   -h	display this help text and exit
-  -v	increase verbosity (stderr). A single -v will show critical, error, info
-        and debug messages. Double -v will show trace messages as well. Note
-        that double -v is VERY verbose. Use for troubleshooting a dissector.
+  -v	increase verbosity (stderr). A single -v will show critical messages.
+        Add more v to increase the trace level up to 5 for DEBUG. Note
+        that DEBUG is VERY verbose. Use only to troubleshoot a dissector.
 
 Example:
   ${0##*/} -v sop.pcapng
+  ${0##*/} -vvvvv sop.pcapng
 EOF
   exit 1 >&2
 }
@@ -43,12 +44,9 @@ done
 
 # By default redirect tshark's STDERR to /dev/null.
 TSHARK_STDERR='2>/dev/null'
-SOP_TRACE=
+SOP_TRACE="-o sop.trace_level:$verbosity_level"
 if [[ $verbosity_level -ge 1 ]]; then
 	TSHARK_STDERR=
-fi
-if [[ $verbosity_level -ge 2 ]]; then
-	SOP_TRACE="-o sop.trace:TRUE"
 fi
 
 shift $(( $OPTIND - 1 ))
