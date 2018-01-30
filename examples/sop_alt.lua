@@ -14,8 +14,7 @@ local sop = Proto('SOP_ALT', 'Simple Order Protocol - alt')
 -- a table of our default settings - these can be changed by changing
 -- the preferences through the GUI or command-line.
 local defaultSettings = {
-	ports = '9011-9020',
-	trace = false
+	ports = '9011-9020'
 }
 local helper = wsdh.createProtoHelper(sop)
 helper:setDefaultPreference(defaultSettings)
@@ -70,7 +69,7 @@ local function parseMessage(buffer, pinfo, tree)
 	if buffer:len() <= minBufferLen then
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
-	
+
 	-- Return missing message length in the case when the data is split
 	-- between packets.
 	local msgLen = getMsgLen(buffer)
@@ -78,13 +77,13 @@ local function parseMessage(buffer, pinfo, tree)
         helper:warn('Invalid LEN field.')
         return 0
     end
-	
+
 	local msgDataLen = getMsgDataLen(buffer)
 	if buffer:len() < msgLen then
 		helper:info('buffer:len < msgLen [' .. buffer:len() .. ' < ' .. msgLen .. ']')
 		return -DESEGMENT_ONE_MORE_SEGMENT
 	end
-	
+
 	-- Look for valid message types.
 	local msgType = buffer(header_len, msgTypeLen):string()
 	local msgSpec = msg_specs[msgType]

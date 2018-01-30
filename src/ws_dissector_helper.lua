@@ -26,7 +26,7 @@ local wsdh = {
 		debug('wsdh Debug:', ...)
 	end,
 	trace = function(self, ...)
-		debug('wsdh trace:', ...)
+		debug('wsdh Debug:', ...)
 	end,
 }
 
@@ -61,7 +61,7 @@ local function createProtoField(abbr, name, desc, len, type)
 	-- the type and length as well. All three should much. Otherwise we
 	-- need to create a new ProtoField.
 	if f and f.len ~= len then
-		wsdh:trace('A field with name "' .. f.name .. '" and different length (' .. f.len .. ') already exists.')
+		wsdh:info('A field with name "' .. f.name .. '" and different length (' .. f.len .. ') already exists.')
 		repoFieldName = repoFieldName .. len
 		f = fieldRepo[repoFieldName]
 	end
@@ -95,7 +95,7 @@ function Field.FIXED(len, abbr, name, fixedValue, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
-			wsdh:trace('Getting value of field ' .. self.name)
+			wsdh:debug('Getting value of field ' .. self.name)
 			local buf = tvb(off, self:len())
 			return buf:string(), buf
 		end,
@@ -134,7 +134,7 @@ function Field.STRING(len, abbr, name, desc, offset, optional)
 		name = name,
 		optional = optional or false,
 		value = function(self, tvb, off)
-			wsdh:trace('Getting value of field ' .. self.name)
+			wsdh:debug('Getting value of field ' .. self.name)
 			off = off or self.offset
 			if off + self:len() > tvb:len() then
 				return nil, nil
@@ -185,7 +185,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
-			wsdh:trace('Getting value of field ' .. self.name)
+			wsdh:debug('Getting value of field ' .. self.name)
 			off = off or self.offset
 			local buf = tvb(off, self:len())
 			return tonumber(buf:string()), buf
@@ -226,7 +226,7 @@ function Field.VARLEN(lenField, abbr, name, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
-			wsdh:trace('Getting value of field ' .. self.name)
+			wsdh:debug('Getting value of field ' .. self.name)
 			off = off or self.offset
 			local buf = tvb(off, self:len(tvb))
 			return buf:string(), buf
@@ -271,13 +271,17 @@ function Field.COMPOSITE(fields)
 			return requiredLen, requiredLen + optionalLen
 		end,
 		value = function(self, tvb, off)
-			wsdh:trace('Getting value of field ' .. self.name)
+			wsdh:debug('Getting value of field ' .. self.name)
 			-- Note that field_len is only the required fields. If there is an
 			-- OPTIONAL field at the end of the COMPOSITE, it cannot be handled
 			-- and the returned value will not include it.
 			local fieldLen, optionalLen = self:len()
 			if off + optionalLen <= tvb:len() then
 				fieldLen = optionalLen
+			end
+			if off + fieldLen > tvb:len() then
+				wsdh:warn('Field.COMPOSITE length missmatch. off + fieldLen > tvb:len() [' .. off + fieldLen .. ' ~= ' .. tvb:len() .. ']')
+				fieldLen = tvb:len() - off
 			end
 			return tvb(off, fieldLen):string(), tvb(off, fieldLen)
 		end,
@@ -338,7 +342,7 @@ function Field.REPEATING(repeatsField, compositeField)
 		add_to = function(self, tree, tvb, off)
 			local repeats = tonumber(self.repeatsField:valueSingle(tvb))
 			if repeats == nil then
-				wsdh:trace('repeatsField is not a number [' .. tostring(repeats) .. ']')
+				wsdh:debug('repeatsField is not a number [' .. tostring(repeats) .. ']')
 				return 0
 			end
 			local addedBytes = 0
@@ -540,6 +544,23 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 	return msgFields
 end
 
+
+local TRACE_LEVEL_OFF = 0
+local TRACE_LEVEL_CRTITICAL = 1
+local TRACE_LEVEL_WARN = 2
+local TRACE_LEVEL_MESSAGE = 3
+local TRACE_LEVEL_INFO = 4
+local TRACE_LEVEL_DEBUG = 5
+
+local trace_levels = {
+	{ 0, "Off", TRACE_LEVEL_OFF },
+	{ 1, "Critical", TRACE_LEVEL_CRTITICAL },
+	{ 2, "Warning", TRACE_LEVEL_WARN },
+	{ 3, "Information", TRACE_LEVEL_MESSAGE },
+	{ 4, "Info", TRACE_LEVEL_INFO },
+	{ 5, "Debug", TRACE_LEVEL_DEBUG }
+}
+
 --[[
 	Creates ws_dissector_helper for a protocol.
 		proto is the Wireshark Proto
@@ -552,31 +573,38 @@ local function createProtoHelper(proto, version)
 		version = version,
 		protocol = proto,
 		critical = function(self, ...)
-			critical(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. ' #' .. tostring(self.frame) .. ' [critical]: ', ...)
-		end,
-		warn = function(self, ...)
-			warn(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [warn]:', ...)
-		end,
-		message = function(self, ...)
-			message(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [message]:', ...)
-		end,
-		info = function(self, ...)
-			info(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [info]:', ...)
-		end,
-		debug = function(self, ...)
-			debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [debug]:', ...)
-		end,
-		-- trace is for troubleshooting a dissector. It prints to debug console or stderr only if
-		-- it the trace preference is enabled. Note that it is very verbose.
-		trace = function(self, ...)
-			if self.protocol.prefs.trace then
-				debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [trace]:', ...)
+			if self.protocol.prefs.trace_level >= TRACE_LEVEL_CRTITICAL then
+				critical(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. ' #' .. tostring(self.frame) .. ' [critical]: ', ...)
 			end
 		end,
+		warn = function(self, ...)
+			if self.protocol.prefs.trace_level >= TRACE_LEVEL_WARN then
+				warn(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [warn]:', ...)
+			end
+		end,
+		message = function(self, ...)
+			if self.protocol.prefs.trace_level >= TRACE_LEVEL_MESSAGE then
+				message(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [message]:', ...)
+			end
+		end,
+		info = function(self, ...)
+			if self.protocol.prefs.trace_level >= TRACE_LEVEL_INFO then
+				info(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [info]:', ...)
+			end
+		end,
+		debug = function(self, ...)
+			if self.protocol.prefs.trace_level >= TRACE_LEVEL_DEBUG then
+				debug(os.date('%H:%M:%S ',os.time()) .. self.protocol.name .. '#' .. tostring(self.frame) .. ' [debug]:', ...)
+			end
+		end,
+		-- Exactly the same with debug. Kept for backwards copatibility.
+		trace = function(self, ...)
+			self:debug(...)
+		end,
 		printMsgSpec = function(self, spec)
-			self:trace('index', 'name', 'abbr', 'len', 'offset', 'type', 'desc')
+			self:debug('index', 'name', 'abbr', 'len', 'offset', 'type', 'desc')
 			for i, field in ipairs(spec) do
-				self:trace(i, field.name, field.abbr, field.len,
+				self:debug(i, field.name, field.abbr, field.len,
 						   field.offset, field.type, field.desc)
 			end
 		end,
@@ -588,11 +616,11 @@ local function createProtoHelper(proto, version)
 			elseif field.type == 'REPEATING' then
 				self:printField(field.composite)
 			elseif field.type then
-				self:trace(field.proto)
+				self:debug(field.proto)
 			end
 		end,
 		printFieldSpec = function(self, spec)
-			self:trace('field spec: ' .. spec.id)
+			self:debug('field spec: ' .. spec.id)
 			for i, field in ipairs(spec) do
 				self:printField(field)
 			end
@@ -611,7 +639,7 @@ local function createProtoHelper(proto, version)
 
 				local bytesConsumed = 0
 				while (bytesConsumed < buffer:len()) do
-					self:trace(buffer(bytesConsumed):string())
+					self:debug(buffer(bytesConsumed):string())
 					local msgLength = parseFunction(buffer(bytesConsumed), pinfo, tree)
 					if msgLength > 0 then
 						self:info('Parsed message of size ' .. msgLength .. '.')
@@ -642,13 +670,13 @@ local function createProtoHelper(proto, version)
 		end,
 		-- Enables the protocol. Uses protocol preferences
 		enableDissector = function(self, transportProtocol)
-			self:trace('enabling dissector')
+			self:debug('enabling dissector')
 			local tcp_port = DissectorTable.get('tcp.port')
 			tcp_port:add(self.protocol.prefs.ports, self.protocol)
 		end,
 		-- Disables the protocol.
 		disableDissector = function(self)
-			self:trace('disabling dissector')
+			self:debug('disabling dissector')
 			local tcp_port = DissectorTable.get('tcp.port')
 			tcp_port:remove_all(self.protocol)
 		end,
@@ -660,9 +688,13 @@ local function createProtoHelper(proto, version)
 											  defaultPrefs.ports,
 											  'Port range (i.e. 7001-7010,8005,8100)',
 											  65535)
-			self.protocol.prefs.trace = Pref.bool('Trace',
-											 defaultPrefs.trace,
-											 'Enable trace messages. Useful for troubleshooting a dissector.')
+			self.protocol.prefs.trace_level = Pref.enum('Trace level',
+											 defaultPrefs.trace_level or TRACE_LEVEL_WARN,
+											 'Sets the level of tracing on stderr and Lua console. Note that Debug level is very verbose but can be very helpful for troubleshooting a dissector.',
+										     trace_levels,
+										     false)
+
+
 
 	        if self.version then
 				self.protocol.prefs.version = Pref.statictext('Protocol version: ' .. self.version)
@@ -683,11 +715,11 @@ local function createProtoHelper(proto, version)
 				local bytesValidated = 0
 				-- Validate first.
 				for i, field in ipairs(fieldsSpec) do
-					self:trace('Validating field ' .. field.name)
+					self:debug('Validating field ' .. field.name)
 					local fieldLen = field:add_to(nil, buf, bytesValidated)
 					if fieldLen == 0 and not field.optional then
 						-- Return without adding anything to the tree.
-						self:trace('field ' .. field.name .. ' is not valid.')
+						self:debug('field ' .. field.name .. ' is not valid.')
 						return 0
 					end
 					bytesValidated = bytesValidated + fieldLen
@@ -701,10 +733,10 @@ local function createProtoHelper(proto, version)
 
 				for i, field in ipairs(fieldsSpec) do
 					if field.type then
-						self:trace('Adding field ' .. field.name)
+						self:debug('Adding field ' .. field.name)
 						local fieldLen = field:add_to(subtree, buf, bytesConsumed)
 						if fieldLen == 0 and not field.optional then
-							self:trace('field ' .. field.name .. ' is empty.')
+							self:debug('field ' .. field.name .. ' is empty.')
 							return 0
 						end
 						bytesConsumed = bytesConsumed + fieldLen
@@ -727,18 +759,18 @@ local function createProtoHelper(proto, version)
 									   self.abbrPrefix,
 									   offset,
 									   sep)
-				if self.protocol.prefs.trace then
+				if self.protocol.prefs.trace_level >= TRACE_LEVEL_DEBUG then
 					self:printMsgSpec(specs[v.name])
 				end
 				msgSpecs[v.name] = msgSpecToFieldSpec(v.name, v.name .. ' message', specs[v.name], header, trailer)
-				if self.protocol.prefs.trace then
+				if self.protocol.prefs.trace_level >= TRACE_LEVEL_DEBUG then
 					self:printFieldSpec(msgSpecs[v.name])
 				end
 				msgParsers[v.name] = self:createParser(msgSpecs[v.name])
 			end
 
 			for i, f in pairs(fieldRepo) do
-				self:trace('Adding ' .. i .. ' to proto.fields')
+				self:debug('Adding ' .. i .. ' to proto.fields')
 				table.insert(self.protocol.fields, f.protoField)
 			end
 
@@ -766,7 +798,11 @@ local function createProtoHelper(proto, version)
 		abbrPrefix = string.lower(proto.name) .. '.',
 		createAbbr = function(self, name)
 			return createAbbr(self.abbrPrefix .. name)
-		end
+		end,
+		Field = Field,
+		readMsgSpec = readMsgSpec,
+		msgSpecToFieldSpec = msgSpecToFieldSpec,
+		createSimpleField = createSimpleField
 	}
 
 	return wsdh
