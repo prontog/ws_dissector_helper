@@ -639,7 +639,7 @@ local function createProtoHelper(proto, version)
 
 				local bytesConsumed = 0
 				while (bytesConsumed < buffer:len()) do
-					self:debug(buffer(bytesConsumed):string())
+					self:info(buffer(bytesConsumed):string())
 					local msgLength = parseFunction(buffer(bytesConsumed), pinfo, tree)
 					if msgLength > 0 then
 						self:info('Parsed message of size ' .. msgLength .. '.')
