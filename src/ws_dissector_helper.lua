@@ -301,7 +301,7 @@ function Field.COMPOSITE(fields)
 
 			local subTree = nil
 			if tree then
-				subTree = tree:add(self.proto, buf, value)
+				subTree = tree:add(self.proto, buf)
 			end
 
 			local addedBytes = 0
