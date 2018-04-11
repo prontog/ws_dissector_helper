@@ -4,7 +4,7 @@ local csv = dofile(WSDH_SCRIPT_PATH .. "csv.lua")
 -- Inspired by the Athena dissector by FlavioJS.
 -------------------------------------------------
 
-local WSDH_VERSION = 0.3
+local WSDH_VERSION = "0.3.1"
 -- This object will be updated by the createProtoHelper function.
 local wsdh = {
 	createAbbr = function(self, name)
@@ -28,6 +28,9 @@ local wsdh = {
 	trace = function(self, ...)
 		debug('wsdh Debug:', ...)
 	end,
+	getMsgLen = function(self, buffer)
+		return buffer:len()
+	end
 }
 
 -- Field table will contain
@@ -95,7 +98,7 @@ function Field.FIXED(len, abbr, name, fixedValue, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
-			wsdh:debug('Getting value of field ' .. self.name)
+			wsdh:debug(self.type .. '.value of field ' .. self.name)
 			local buf = tvb(off, self:len())
 			return buf:string(), buf
 		end,
@@ -105,6 +108,7 @@ function Field.FIXED(len, abbr, name, fixedValue, desc, offset)
 		end,
 		fixedValue = fixedValue,
 		add_to = function(self, tree, tvb, off)
+			wsdh:debug(self.type .. '.add_to of field ' .. self.name)
 			local value, buf = self:value(tvb, off)
 			if value ~= self.fixedValue then
 				wsdh:warn('field ' .. self.name ..
@@ -134,10 +138,17 @@ function Field.STRING(len, abbr, name, desc, offset, optional)
 		name = name,
 		optional = optional or false,
 		value = function(self, tvb, off)
-			wsdh:debug('Getting value of field ' .. self.name)
+			wsdh:debug(self.type .. '.value of field ' .. self.name)
 			off = off or self.offset
 			if off + self:len() > tvb:len() then
 				return nil, nil
+			end
+
+			if self.optional then
+				if off + self:len() > wsdh:getMsgLen(tvb) then
+					wsdh:debug(self.type .. ' length missmatch. off + self:len() > wsdh:getMsgLen(tvb) [' .. off + self:len() .. ' > ' .. wsdh:getMsgLen(tvb) .. ']')
+					return nil, nil
+				end
 			end
 
 			local buf = tvb(off, self:len())
@@ -148,6 +159,7 @@ function Field.STRING(len, abbr, name, desc, offset, optional)
 			return value
 		end,
 		add_to = function(self, tree, tvb, off)
+			wsdh:debug(self.type .. '.add_to of field ' .. self.name)
 			local value, buf = self:value(tvb, off)
 			local valueLen = self:len()
 			local subTree = nil
@@ -171,7 +183,9 @@ function Field.STRING(len, abbr, name, desc, offset, optional)
 end
 
 function Field.OPTIONAL(len, abbr, name, desc, offset)
-	return Field.STRING(len, abbr, name, desc, offset, true)
+	f = Field.STRING(len, abbr, name, desc, offset, true)
+	f.type = 'OPTIONAL'
+	return f
 end
 
 function Field.NUMERIC(len, abbr, name, desc, offset)
@@ -185,7 +199,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
-			wsdh:debug('Getting value of field ' .. self.name)
+			wsdh:debug(self.type .. '.value of field ' .. self.name)
 			off = off or self.offset
 			local buf = tvb(off, self:len())
 			return tonumber(buf:string()), buf
@@ -195,6 +209,7 @@ function Field.NUMERIC(len, abbr, name, desc, offset)
 			return value
 		end,
 		add_to = function(self, tree, tvb, off)
+			wsdh:debug(self.type .. '.add_to of field ' .. self.name)
 			local value, buf = self:value(tvb, off)
 			local valueLen = self:len()
 
@@ -226,7 +241,7 @@ function Field.VARLEN(lenField, abbr, name, desc, offset)
 		abbr = abbr,
 		name = name,
 		value = function(self, tvb, off)
-			wsdh:debug('Getting value of field ' .. self.name)
+			wsdh:debug(self.type .. '.value of field ' .. self.name)
 			off = off or self.offset
 			local buf = tvb(off, self:len(tvb))
 			return buf:string(), buf
@@ -236,6 +251,7 @@ function Field.VARLEN(lenField, abbr, name, desc, offset)
 			return value
 		end,
 		add_to = function(self, tree, tvb, off)
+			wsdh:debug(self.type .. '.add_to of field ' .. self.name)
 			local value, buf = self:value(tvb, off)
 
 			local subTree = nil
@@ -271,14 +287,23 @@ function Field.COMPOSITE(fields)
 			return requiredLen, requiredLen + optionalLen
 		end,
 		value = function(self, tvb, off)
-			wsdh:debug('Getting value of field ' .. self.name)
+			wsdh:debug(self.type .. '.value of field ' .. self.name)
 			-- Note that field_len is only the required fields. If there is an
 			-- OPTIONAL field at the end of the COMPOSITE, it cannot be handled
 			-- and the returned value will not include it.
 			local fieldLen, optionalLen = self:len()
 			if off + optionalLen <= tvb:len() then
-				fieldLen = optionalLen
+				if fieldLen ~= optionalLen then
+					if off + optionalLen > wsdh:getMsgLen(tvb) then
+						wsdh:debug(self.type .. ' length missmatch. off + optionalLen > wsdh:getMsgLen(tvb) [' .. off + optionalLen .. ' > ' .. wsdh:getMsgLen(tvb) .. ']. Discarding optionalLen.')
+					else
+						fieldLen = optionalLen
+					end
+				else
+					fieldLen = optionalLen
+				end
 			end
+
 			if off + fieldLen > tvb:len() then
 				wsdh:warn('Field.COMPOSITE length missmatch. off + fieldLen > tvb:len() [' .. off + fieldLen .. ' ~= ' .. tvb:len() .. ']')
 				fieldLen = tvb:len() - off
@@ -297,6 +322,7 @@ function Field.COMPOSITE(fields)
 			return -1
 		end,
 		add_to = function(self, tree, tvb, off)
+			wsdh:debug(self.type .. '.add_to of field ' .. self.name)
 			local value, buf = self:value(tvb, off)
 
 			local subTree = nil
@@ -340,6 +366,7 @@ function Field.REPEATING(repeatsField, compositeField)
 			return self.composite:len()
 		end,
 		add_to = function(self, tree, tvb, off)
+			wsdh:debug(self.type .. '.add_to of field ' .. self.name)
 			local repeats = tonumber(self.repeatsField:valueSingle(tvb))
 			if repeats == nil then
 				wsdh:debug('repeatsField is not a number [' .. tostring(repeats) .. ']')
@@ -506,7 +533,7 @@ local function msgSpecToFieldSpec(id, description, msgSpec, header, trailer)
 													   f.name,
 													   f.desc,
 													   f.offset)
-	   elseif f.type == 'OPTIONAL' then
+	    elseif f.type == 'OPTIONAL' then
 		   assert(i == #msgSpec, 'Invalid optional field ' .. f.name .. ' in message ' .. id .. '. Optional fields are only allowed at the end of a message.')
 
 		   bodyFields[#bodyFields + 1] = Field.OPTIONAL(f.len,
@@ -725,6 +752,11 @@ local function createProtoHelper(proto, version)
 					bytesValidated = bytesValidated + fieldLen
 				end
 
+				if bytesValidated ~= self:getMsgLen(buf) then
+					self:debug('length missmatch. bytesValidated ~= self:getMsgLen(buf) [' .. bytesValidated .. ' ~= ' .. self:getMsgLen(buf) .. ']')
+					return
+				end
+
 				-- Start adding to the tree.
 				local bytesConsumed = 0
 				local subtree = root:add(self.protocol,
@@ -802,7 +834,10 @@ local function createProtoHelper(proto, version)
 		Field = Field,
 		readMsgSpec = readMsgSpec,
 		msgSpecToFieldSpec = msgSpecToFieldSpec,
-		createSimpleField = createSimpleField
+		createSimpleField = createSimpleField,
+		getMsgLen = function(self, buffer)
+			return buffer:len()
+		end
 	}
 
 	return wsdh
