@@ -27,9 +27,6 @@ local wsdh = {
 	end,
 	trace = function(self, ...)
 		debug('wsdh Debug:', ...)
-	end,
-	getMsgLen = function(self, buffer)
-		return buffer:len()
 	end
 }
 
@@ -144,7 +141,7 @@ function Field.STRING(len, abbr, name, desc, offset, optional)
 				return nil, nil
 			end
 
-			if self.optional then
+			if self.optional and wsdh.getMsgLen then
 				if off + self:len() > wsdh:getMsgLen(tvb) then
 					wsdh:debug(self.type .. ' length missmatch. off + self:len() > wsdh:getMsgLen(tvb) [' .. off + self:len() .. ' > ' .. wsdh:getMsgLen(tvb) .. ']')
 					return nil, nil
@@ -293,7 +290,7 @@ function Field.COMPOSITE(fields)
 			-- and the returned value will not include it.
 			local fieldLen, optionalLen = self:len()
 			if off + optionalLen <= tvb:len() then
-				if fieldLen ~= optionalLen then
+				if fieldLen ~= optionalLen and wsdh.getMsgLen then
 					if off + optionalLen > wsdh:getMsgLen(tvb) then
 						wsdh:debug(self.type .. ' length missmatch. off + optionalLen > wsdh:getMsgLen(tvb) [' .. off + optionalLen .. ' > ' .. wsdh:getMsgLen(tvb) .. ']. Discarding optionalLen.')
 					else
@@ -305,7 +302,7 @@ function Field.COMPOSITE(fields)
 			end
 
 			if off + fieldLen > tvb:len() then
-				wsdh:warn('Field.COMPOSITE length missmatch. off + fieldLen > tvb:len() [' .. off + fieldLen .. ' ~= ' .. tvb:len() .. ']')
+				wsdh:warn(self.type .. ' length missmatch. off + fieldLen > tvb:len() [' .. off + fieldLen .. ' ~= ' .. tvb:len() .. ']')
 				fieldLen = tvb:len() - off
 			end
 			return tvb(off, fieldLen):string(), tvb(off, fieldLen)
@@ -676,7 +673,7 @@ local function createProtoHelper(proto, version)
 							self:warn('Parsing the message did not complete. Skipping the rest of the packet.')
 							return
 						else
-							self:warn('Nothing could be parsed. Skipping packet.')
+							self:warn('Parsing failed. Skipping packet.')
 							return 0
 						end
 					else
@@ -752,9 +749,11 @@ local function createProtoHelper(proto, version)
 					bytesValidated = bytesValidated + fieldLen
 				end
 
-				if bytesValidated ~= self:getMsgLen(buf) then
-					self:debug('length missmatch. bytesValidated ~= self:getMsgLen(buf) [' .. bytesValidated .. ' ~= ' .. self:getMsgLen(buf) .. ']')
-					return
+				if self.getMsgLen then
+				 	if bytesValidated ~= self:getMsgLen(buf) then
+						self:debug('length missmatch. bytesValidated ~= self:getMsgLen(buf) [' .. bytesValidated .. ' ~= ' .. self:getMsgLen(buf) .. ']')
+						return 0
+					end
 				end
 
 				-- Start adding to the tree.
@@ -834,10 +833,7 @@ local function createProtoHelper(proto, version)
 		Field = Field,
 		readMsgSpec = readMsgSpec,
 		msgSpecToFieldSpec = msgSpecToFieldSpec,
-		createSimpleField = createSimpleField,
-		getMsgLen = function(self, buffer)
-			return buffer:len()
-		end
+		createSimpleField = createSimpleField
 	}
 
 	return wsdh
