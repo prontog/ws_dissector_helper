@@ -142,8 +142,13 @@ function Field.STRING(len, abbr, name, desc, offset, optional)
 			end
 
 			if self.optional and wsdh.getMsgLen then
-				if off + self:len() > wsdh:getMsgLen(tvb) then
-					wsdh:debug(self.type .. ' length missmatch. off + self:len() > wsdh:getMsgLen(tvb) [' .. off + self:len() .. ' > ' .. wsdh:getMsgLen(tvb) .. ']')
+				local msgLen = wsdh:getMsgLen(tvb)
+				local trailerLen = 0
+				if wsdh.trailer then
+					trailerLen = wsdh.trailer:len()
+				end
+				if off + self:len() + trailerLen > msgLen then
+					wsdh:debug(self.type .. ' length missmatch. off + self:len() + trailerLen > wsdh:getMsgLen(tvb) [' .. off + self:len() + trailerLen .. ' > ' .. msgLen .. ']')
 					return nil, nil
 				end
 			end
@@ -285,14 +290,19 @@ function Field.COMPOSITE(fields)
 		end,
 		value = function(self, tvb, off)
 			wsdh:debug(self.type .. '.value of field ' .. self.name)
-			-- Note that field_len is only the required fields. If there is an
-			-- OPTIONAL field at the end of the COMPOSITE, it cannot be handled
-			-- and the returned value will not include it.
+			-- Note that fieldlen is only the required fields. An OPTIONAL
+			-- field is allowed at the end of the COMPOSITE. Only a trailer
+			-- field can come after it.
 			local fieldLen, optionalLen = self:len()
 			if off + optionalLen <= tvb:len() then
 				if fieldLen ~= optionalLen and wsdh.getMsgLen then
-					if off + optionalLen > wsdh:getMsgLen(tvb) then
-						wsdh:debug(self.type .. ' length missmatch. off + optionalLen > wsdh:getMsgLen(tvb) [' .. off + optionalLen .. ' > ' .. wsdh:getMsgLen(tvb) .. ']. Discarding optionalLen.')
+					msgLen = wsdh:getMsgLen(tvb)
+					local trailerLen = 0
+					if wsdh.trailer then
+						trailerLen = wsdh.trailer:len()
+					end
+					if off + optionalLen + trailerLen > msgLen then
+						wsdh:debug(self.type .. ' length missmatch. off + optionalLen + trailerLen > wsdh:getMsgLen(tvb) [' .. off + optionalLen + trailerLen.. ' > ' .. msgLen .. ']. Discarding optionalLen.')
 					else
 						fieldLen = optionalLen
 					end
@@ -305,6 +315,7 @@ function Field.COMPOSITE(fields)
 				wsdh:warn(self.type .. ' length missmatch. off + fieldLen > tvb:len() [' .. off + fieldLen .. ' ~= ' .. tvb:len() .. ']')
 				fieldLen = tvb:len() - off
 			end
+
 			return tvb(off, fieldLen):string(), tvb(off, fieldLen)
 		end,
 		getOffset = function(self, abbr1)
@@ -750,8 +761,9 @@ local function createProtoHelper(proto, version)
 				end
 
 				if self.getMsgLen then
-				 	if bytesValidated ~= self:getMsgLen(buf) then
-						self:debug('length missmatch. bytesValidated ~= self:getMsgLen(buf) [' .. bytesValidated .. ' ~= ' .. self:getMsgLen(buf) .. ']')
+					local msgLen = self:getMsgLen(buf)
+				 	if bytesValidated ~= msgLen then
+						self:debug('length missmatch. bytesValidated ~= self:getMsgLen(buf) [' .. bytesValidated .. ' ~= ' .. msgLen .. ']')
 						return 0
 					end
 				end
